@@ -6,10 +6,10 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod.mjs";
 
 export { Sandbox } from "@cloudflare/sandbox";
 
-const issueWriteSchema = z.object({
+const issueWriteSchema = z.array(z.object({
   title: z.string(),
   body: z.string()
-});
+}));
 
 
 interface Env {
@@ -259,9 +259,11 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
       {
         role: 'user',
         content: `Analyze this codebase for issues focusing on bugs, security, and best practices: 
+
+        Create an issue for each of the criteria that you find
       
         
-        ${files.map(f => `File: ${f.path}\nContent:${f.content}`).join("\n\n")}
+        ${files.map(f => `File: ${f.path}\nContent:${f.content}\nPatch:${f.patch}`).join("\n\n")}
         `
       }
     ],
@@ -272,13 +274,15 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
       console.log("Analyzing Codebase") 
 
       if(!response.parsed_output) throw new Error("No parsed Output")
-
-      await octokit.issues.create({
-        owner: repo.owner.login,
-        repo: repo.name,
-        title: response.parsed_output.title,
-        body: response.parsed_output?.body
-      })
+      
+        for (const issue of response.parsed_output) { 
+          await octokit.issues.create({
+            owner: repo.owner.login,
+            repo: repo.name,
+            title: issue.title,
+            body: issue.body
+          })
+        }
       
     } catch(error: any) {
       console.error("Review failed:", error);
