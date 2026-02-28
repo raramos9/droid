@@ -230,11 +230,14 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
   const fileContents = []
   for (const fileInfo of files.files) { 
     if (fileInfo.type === "file"){ 
-      const content = await sandbox.readFile(fileInfo.absolutePath)
-      fileContents.push({
-        path: fileInfo.absolutePath,
-        content: content
-      })
+      if (!(fileInfo.absolutePath.includes("node_modules") || fileInfo.absolutePath.includes(".git"))) {
+        const content = await sandbox.readFile(fileInfo.absolutePath)
+        fileContents.push({
+          path: fileInfo.absolutePath,
+          content: content
+        })
+      }
+
     }
   }
 
@@ -256,6 +259,7 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
     ],
     output_config: {format: zodOutputFormat(issueWriteSchema)}
   });
+
      
       console.log("Analyzing Codebase") 
 
