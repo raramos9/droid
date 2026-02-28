@@ -221,25 +221,33 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
   console.log("Cloning repository...");
     const cloneUrl = `https://${env.GITHUB_TOKEN}@github.com/${repo.owner.login}/${repo.name}.git`;
     await sandbox.exec(
-      `git clone --depth=1 --branch=test-review ${cloneUrl} /workspace/repo`,
+      `git clone --depth=1 --branch=${payload.ref.replace('refs/heads/', '')} ${cloneUrl} /workspace/repo`,
     );
 
   //  need to parse through all files in a repo
 
-  const files = await sandbox.listFiles("/workspace/repo", {recursive: true})
-  const fileContents = []
-  for (const fileInfo of files.files) { 
-    if (fileInfo.type === "file"){ 
-      if (!(fileInfo.absolutePath.includes("node_modules") || fileInfo.absolutePath.includes(".git"))) {
-        const content = await sandbox.readFile(fileInfo.absolutePath)
-        fileContents.push({
-          path: fileInfo.absolutePath,
-          content: content
-        })
-      }
+  // Get changed files
+    console.log("Fetching changed files...");
+    const comparison = await octokit.repos.compareCommits({
+      owner: repo.owner.login,
+      repo: repo.name,
+      base: payload.before,
+      head: payload.after,
+    });
 
+    const files = [];
+    for (const file of (comparison.data.files || []).slice(0, 5)) {
+      if (file.status !== "removed") {
+        const content = await sandbox.readFile(
+          `/workspace/repo/${file.filename}`,
+        );
+        files.push({
+          path: file.filename,
+          patch: file.patch || "",
+          content: content.content,
+        });
+      }
     }
-  }
 
   // analyze code base (claude)
   console.log("Analyzing with Claude")
@@ -253,7 +261,7 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
         content: `Analyze this codebase for issues focusing on bugs, security, and best practices: 
       
         
-        ${fileContents.map(f => `File: ${f.path}\nContent:${f.content.content}`).join("\n\n")}
+        ${files.map(f => `File: ${f.path}\nContent:${f.content}`).join("\n\n")}
         `
       }
     ],
