@@ -254,7 +254,7 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
   const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   const response = await anthropic.messages.parse({
     model: 'claude-sonnet-4-5',
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [
       {
         role: 'user',
