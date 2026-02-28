@@ -47,6 +47,7 @@ export default {
         payload = JSON.parse(params.get("payload") || "{}");
       }
 
+    
       // Handle opened and reopened PRs
       if (
         event === "pull_request" &&
@@ -58,6 +59,17 @@ export default {
           reviewPullRequest(payload, env).catch(console.error),
         );
         return Response.json({ message: "Review started" });
+      }
+
+      else if (
+        event === "push"
+      ) {
+        console.log('Analyzing Codebase')
+        // waitUntil to ensure analysis completes
+        ctx.waitUntil(
+          writeIssue(payload, env)
+        );
+        return Response.json({message: "Issue Review Started"})
       }
 
       return Response.json({ message: "Event ignored" });
@@ -189,3 +201,76 @@ Provide a brief code review focusing on bugs, security, and best practices.`,
     await sandbox.destroy();
   }
 }
+
+async function writeIssue(payload: any, env: Env): Promise<void> {
+  const repo = payload.repository
+  const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
+  const sandbox = getSandbox(env.Sandbox, `issue-analysis`);
+
+  try {
+    
+  // clone repo and create test branch
+  console.log("Cloning repository...");
+    const cloneUrl = `https://${env.GITHUB_TOKEN}@github.com/${repo.owner.login}/${repo.name}.git`;
+    await sandbox.exec(
+      `git clone --depth=1 --branch=test-review ${cloneUrl} /workspace/repo`,
+    );
+
+  //  need to parse through all files in a repo
+
+  const files = await sandbox.listFiles("/workspace/repo", {recursive: true})
+  const fileContents = []
+  for (const fileInfo of files.files) { 
+    if (fileInfo.type === "file"){ 
+      const content = await sandbox.readFile(fileInfo.absolutePath)
+      fileContents.push({
+        path: fileInfo.absolutePath,
+        content: content
+      })
+    }
+  }
+
+  // analyze code base (claude)
+  console.log("Analyzing with Claude")
+  const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 2048,
+    messages: [
+      {
+        role: 'user',
+        content: `Analyze this codebase for issues focusing on bugs, security, and best practices: 
+        
+        
+        ${fileContents.map(f => `File: ${f.path}\nContent:${f.content}`).join("\n\n")}
+        `
+      }
+    ]
+  })
+
+    const review =
+      response.content[0]?.type === "text"
+        ? response.content[0].text
+        : "No review generated";
+     
+      console.log("Analyzing Codebase") 
+
+      await octokit.issues.create({
+        owner: repo.owner.login,
+        repo: repo.name,
+        title: "Test",
+        body: review
+      })
+      
+    } catch(error: any) {
+      console.error("Review failed:", error);
+    } finally { 
+      await sandbox.destroy();
+    }
+
+}
+
+// writeIssue (octokit, sandbox, payload)
+// clone repo 
+// analyze codebase 
+// generate issues 
