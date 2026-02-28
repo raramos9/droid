@@ -1,8 +1,16 @@
 import { getSandbox, proxyToSandbox, type Sandbox } from "@cloudflare/sandbox";
 import { Octokit } from "@octokit/rest";
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod"
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod.mjs";
 
 export { Sandbox } from "@cloudflare/sandbox";
+
+const issueWriteSchema = z.object({
+  title: z.string(),
+  body: z.string()
+});
+
 
 interface Env {
   Sandbox: DurableObjectNamespace<Sandbox>;
@@ -233,33 +241,31 @@ async function writeIssue(payload: any, env: Env): Promise<void> {
   // analyze code base (claude)
   console.log("Analyzing with Claude")
   const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-  const response = await anthropic.messages.create({
+  const response = await anthropic.messages.parse({
     model: 'claude-sonnet-4-5',
     max_tokens: 2048,
     messages: [
       {
         role: 'user',
         content: `Analyze this codebase for issues focusing on bugs, security, and best practices: 
+      
         
-        
-        ${fileContents.map(f => `File: ${f.path}\nContent:${f.content}`).join("\n\n")}
+        ${fileContents.map(f => `File: ${f.path}\nContent:${f.content.content}`).join("\n\n")}
         `
       }
-    ]
-  })
-
-    const review =
-      response.content[0]?.type === "text"
-        ? response.content[0].text
-        : "No review generated";
+    ],
+    output_config: {format: zodOutputFormat(issueWriteSchema)}
+  });
      
       console.log("Analyzing Codebase") 
+
+      if(!response.parsed_output) throw new Error("No parsed Output")
 
       await octokit.issues.create({
         owner: repo.owner.login,
         repo: repo.name,
-        title: "Test",
-        body: review
+        title: response.parsed_output.title,
+        body: response.parsed_output?.body
       })
       
     } catch(error: any) {
