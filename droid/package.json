@@ -18,5 +18,11 @@
 		"wrangler": "^4.69.0"
 	},
 	"author": "",
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.78.0",
+		"@octokit/rest": "^22.0.1",
+		"i": "^0.3.7",
+		"zod": "^4.3.6"
+	}
 }
