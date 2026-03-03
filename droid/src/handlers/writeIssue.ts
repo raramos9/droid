@@ -75,12 +75,20 @@ export async function writeIssue(payload: any, env: Env): Promise<void> {
       messages: [
         {
           role: "user",
-          content: `Analyze this codebase for issues focusing on bugs, security, and best practices: 
+          content: `Analyze these code changes for concrete, actionable issues
+            focusing on bugs, security vulnerabilities, and best
+            practices.
 
-        Create an issue for each of the criteria that you find
-
-        Alongside the issue you will create the title of the pull request containing the fix as well as the branch name that will contain the code.
-      
+            Rules:
+            - Report a maximum of 3 issues
+            - Only report issues you are confident about
+            - filePath must be the exact file path prefixed with
+            /workspace/repo/
+            - branchTitle must be short, lowercase, kebab-case (e.g.
+            fix-null-check)
+            - fixTitle must be a concise PR title (e.g. "fix: add null
+            check in handler")
+                
         
         ${files.map((f) => `File: ${f.path}\nContent:${f.content}\nPatch:${f.patch}`).join("\n\n")}
         `,

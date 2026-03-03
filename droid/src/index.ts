@@ -5,8 +5,6 @@ import { verifySignature } from "./lib/verify";
 
 export { Sandbox } from "@cloudflare/sandbox";
 
-
-
 interface Env {
   Sandbox: DurableObjectNamespace<Sandbox>;
   GITHUB_TOKEN: string;
