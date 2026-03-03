@@ -93,7 +93,7 @@ export async function writeIssue(payload: any, env: Env): Promise<void> {
 
     if (!response.parsed_output) throw new Error("No parsed Output");
 
-    for (const issue of response.parsed_output) {
+    for (const issue of response.parsed_output.slice(0,1)) {
 
       await octokit.issues.create({
         owner: repo.owner.login,
