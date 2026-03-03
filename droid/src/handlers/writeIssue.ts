@@ -110,7 +110,9 @@ export async function writeIssue(payload: any, env: Env): Promise<void> {
             role: "user",
             content: `For each of these issues, draft the code solution to the problem. Create the tests and test your code to ensure that it works properly. 
 
-            All file paths must be absolute and start with
+            The repository is cloned at /workspace/repo. ALL file      
+            operations must use paths starting with /workspace/repo/.
+            Never use paths like /droid/ or relative paths.
 
             Title: ${issue.title}\n
             Content: ${issue.body}\n
