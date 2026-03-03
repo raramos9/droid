@@ -11,7 +11,7 @@ export function createDirectoryTool(sandbox: Sandbox) {
     description: "Create a directory",
     run: async (input) => {
       try {
-        await sandbox.mkdir(input.dirPath);
+        await sandbox.mkdir(input.dirPath, {recursive: true});
       } catch (err: any) {
         throw new Error("Error creating directory file");
       }
