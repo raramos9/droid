@@ -110,6 +110,8 @@ export async function writeIssue(payload: any, env: Env): Promise<void> {
             role: "user",
             content: `For each of these issues, draft the code solution to the problem. Create the tests and test your code to ensure that it works properly. 
 
+            All file paths must be absolute and start with
+
             Title: ${issue.title}\n
             Content: ${issue.body}\n
             File Path: ${issue.filePath}\n
