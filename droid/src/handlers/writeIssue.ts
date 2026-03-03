@@ -114,8 +114,16 @@ export async function writeIssue(payload: any, env: Env): Promise<void> {
             operations must use paths starting with /workspace/repo/.
             Never use paths like /droid/ or relative paths.
 
-            Title: ${issue.title}\n
-            Content: ${issue.body}\n
+        
+            Content: ${issue.body}\nThe repository is cloned at /workspace/repo. ALL
+              file operations must use paths starting with
+              /workspace/repo/.
+
+              Here are the files available:
+              ${files.map(f => `/workspace/repo/${f.path}`).join("\n")}
+
+              For this issue:
+              Title: ${issue.title}
             File Path: ${issue.filePath}\n
             Branch: ${issue.branchTitle}\n
             PR Title: ${issue.fixTitle}\n
