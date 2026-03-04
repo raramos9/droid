@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Stable mock references hoisted before vi.mock
+const mockParse = vi.hoisted(() => vi.fn());
+const mockToolRunner = vi.hoisted(() => vi.fn());
+const mockCompareCommits = vi.hoisted(() => vi.fn());
+const mockIssuesCreate = vi.hoisted(() => vi.fn());
+const mockPullsCreate = vi.hoisted(() => vi.fn());
+
 vi.mock("@octokit/rest", () => {
   const Octokit = vi.fn().mockImplementation(function () {
     return {
-      repos: { compareCommits: vi.fn().mockResolvedValue({ data: { files: [] } }) },
-      issues: { create: vi.fn().mockResolvedValue({ data: { number: 1 } }) },
-      pulls: { create: vi.fn().mockResolvedValue({ data: { number: 2 } }) },
+      repos: { compareCommits: mockCompareCommits },
+      issues: { create: mockIssuesCreate },
+      pulls: { create: mockPullsCreate },
     };
   });
   return { Octokit };
@@ -14,15 +21,8 @@ vi.mock("@octokit/rest", () => {
 vi.mock("@anthropic-ai/sdk", () => {
   const Anthropic = vi.fn().mockImplementation(function () {
     return {
-      messages: {
-        parse: vi.fn().mockResolvedValue({
-          parsed_output: [],
-          usage: { input_tokens: 10, output_tokens: 20 },
-        }),
-      },
-      beta: {
-        messages: { toolRunner: vi.fn().mockResolvedValue({}) },
-      },
+      messages: { parse: mockParse },
+      beta: { messages: { toolRunner: mockToolRunner } },
     };
   });
   return { default: Anthropic };
@@ -42,6 +42,7 @@ vi.mock("../../src/lib/repoHelpers", () => ({
 
 import { writeIssueAgent } from "../../src/agents/writeIssue";
 import { setupGitCredentials } from "../../src/lib/gitCredentials";
+import { hasGitChanges } from "../../src/lib/repoHelpers";
 
 function makeSandbox() {
   return {
@@ -63,6 +64,24 @@ const pushPayload = {
   before: "aaa",
   after: "def12345xyz",
 };
+
+const mockIssue = {
+  title: "Fix null check",
+  body: "Missing null check",
+  branchTitle: "fix-null-check",
+  fixTitle: "fix: add null check",
+  filePath: "/workspace/repo/src/handler.ts",
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockCompareCommits.mockResolvedValue({ data: { files: [] } });
+  mockIssuesCreate.mockResolvedValue({ data: { number: 1 } });
+  mockPullsCreate.mockResolvedValue({ data: { number: 2 } });
+  mockParse.mockResolvedValue({ parsed_output: [], usage: { input_tokens: 10, output_tokens: 20 } });
+  mockToolRunner.mockResolvedValue({});
+  vi.mocked(hasGitChanges).mockResolvedValue(false);
+});
 
 describe("writeIssueAgent", () => {
   it("has name writeIssue", () => {
@@ -88,12 +107,7 @@ describe("writeIssueAgent", () => {
   it("uses setupGitCredentials — not a raw token URL", async () => {
     const ctx = makeCtx();
     await writeIssueAgent.run(pushPayload, ctx);
-    expect(setupGitCredentials).toHaveBeenCalledWith(
-      ctx.sandbox,
-      "tok",
-      "acme",
-      "repo",
-    );
+    expect(setupGitCredentials).toHaveBeenCalledWith(ctx.sandbox, "tok", "acme", "repo");
   });
 
   it("does NOT call sandbox.destroy (harness owns lifecycle)", async () => {
@@ -102,17 +116,56 @@ describe("writeIssueAgent", () => {
     expect(sandbox.destroy).not.toHaveBeenCalled();
   });
 
-  it("returns AgentResult with success true when no issues found", async () => {
+  it("returns success true when no issues found", async () => {
     const result = await writeIssueAgent.run(pushPayload, makeCtx());
     expect(result.success).toBe(true);
     expect(Array.isArray(result.artifacts)).toBe(true);
   });
 
-  it("returns success false on error", async () => {
+  it("returns success false on clone error", async () => {
     const sandbox = makeSandbox();
     sandbox.exec.mockRejectedValueOnce(new Error("clone failed"));
     const result = await writeIssueAgent.run(pushPayload, makeCtx(sandbox));
     expect(result.success).toBe(false);
     expect(result.error).toContain("clone failed");
+  });
+
+  it("creates issue and PR artifact when changes exist", async () => {
+    mockParse.mockResolvedValueOnce({
+      parsed_output: [mockIssue],
+      usage: { input_tokens: 50, output_tokens: 100 },
+    });
+    vi.mocked(hasGitChanges).mockResolvedValueOnce(true);
+    const result = await writeIssueAgent.run(pushPayload, makeCtx());
+    expect(result.success).toBe(true);
+    expect(result.artifacts.some((a) => a.includes("Issue"))).toBe(true);
+    expect(result.artifacts.some((a) => a.includes("PR"))).toBe(true);
+  });
+
+  it("skips PR when no git changes after toolRunner", async () => {
+    mockParse.mockResolvedValueOnce({
+      parsed_output: [mockIssue],
+      usage: { input_tokens: 10, output_tokens: 10 },
+    });
+    vi.mocked(hasGitChanges).mockResolvedValueOnce(false);
+    const result = await writeIssueAgent.run(pushPayload, makeCtx());
+    expect(result.success).toBe(true);
+    expect(mockPullsCreate).not.toHaveBeenCalled();
+  });
+
+  it("throws on unsafe branchTitle", async () => {
+    mockParse.mockResolvedValueOnce({
+      parsed_output: [{ ...mockIssue, branchTitle: "unsafe; rm -rf" }],
+      usage: { input_tokens: 10, output_tokens: 10 },
+    });
+    const result = await writeIssueAgent.run(pushPayload, makeCtx());
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("invalid characters");
+  });
+
+  it("reports usage in result", async () => {
+    const result = await writeIssueAgent.run(pushPayload, makeCtx());
+    expect(result.usage?.inputTokens).toBe(10);
+    expect(result.usage?.outputTokens).toBe(20);
   });
 });
