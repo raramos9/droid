@@ -1,4 +1,4 @@
-import { getSandbox } from "@cloudflare/sandbox";
+import { getSandbox, type Sandbox } from "@cloudflare/sandbox";
 import { type Agent, type AgentResult } from "../agents/base";
 import { type Dispatch } from "../triggers/github";
 import { writeIssueAgent } from "../agents/writeIssue";
@@ -6,7 +6,7 @@ import { reviewPRAgent } from "../agents/reviewPR";
 import { buildSandboxId } from "../lib/repoHelpers";
 
 interface Env {
-  Sandbox: DurableObjectNamespace;
+  Sandbox: DurableObjectNamespace<Sandbox>;
   GITHUB_TOKEN: string;
   ANTHROPIC_API_KEY: string;
   WEBHOOK_SECRET: string;

@@ -1,7 +1,7 @@
 import { proxyToSandbox, type Sandbox } from "@cloudflare/sandbox";
-import { reviewPullRequest } from "./handlers/pullRequest";
-import { writeIssue } from "./handlers/writeIssue";
 import { verifySignature } from "./lib/verify";
+import { fromGithubWebhook } from "./triggers/github";
+import { runAgent } from "./harness/index";
 
 export { Sandbox } from "@cloudflare/sandbox";
 
@@ -13,11 +13,7 @@ interface Env {
 }
 
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const proxyResponse = await proxyToSandbox(request, env);
     if (proxyResponse) return proxyResponse;
 
@@ -28,58 +24,25 @@ export default {
       const contentType = request.headers.get("content-type") || "";
       const body = await request.text();
 
-      // Verify webhook signature (skip in dev mode)
       const isDev = request.headers.get("x-dev-bypass") === "true";
-      if (
-        !isDev &&
-        (!signature ||
-          !(await verifySignature(body, signature, env.WEBHOOK_SECRET)))
-      ) {
+      if (!isDev && (!signature || !(await verifySignature(body, signature, env.WEBHOOK_SECRET)))) {
         return Response.json({ error: "Invalid signature" }, { status: 401 });
       }
 
       const event = request.headers.get("x-github-event");
+      const payload = contentType.includes("application/json")
+        ? JSON.parse(body)
+        : JSON.parse(new URLSearchParams(body).get("payload") || "{}");
 
-      // Parse payload (GitHub can send as JSON or form-encoded)
-      let payload;
-      if (contentType.includes("application/json")) {
-        payload = JSON.parse(body);
-      } else {
-        // Handle form-encoded payload
-        const params = new URLSearchParams(body);
-        payload = JSON.parse(params.get("payload") || "{}");
+      const dispatch = fromGithubWebhook(event, payload);
+      if (!dispatch) {
+        return Response.json({ message: "Event ignored" });
       }
 
-    
-      // Handle opened and reopened PRs
-      if (
-        event === "pull_request" &&
-        (payload.action === "opened" || payload.action === "reopened")
-      ) {
-        console.log(`Starting review for PR #${payload.pull_request.number}`);
-        // Use waitUntil to ensure the review completes even after response is sent
-        ctx.waitUntil(
-          reviewPullRequest(payload, env).catch(console.error),
-        );
-        return Response.json({ message: "Review started" });
-      }
-
-      else if (
-        event === "push"
-      ) {
-        console.log('Analyzing Codebase')
-        // waitUntil to ensure analysis completes
-        ctx.waitUntil(
-          writeIssue(payload, env)
-        );
-        return Response.json({message: "Issue Review Started"})
-      }
-
-      return Response.json({ message: "Event ignored" });
+      ctx.waitUntil(runAgent(dispatch, env).catch(console.error));
+      return Response.json({ message: `${dispatch.agent} started` });
     }
 
-    return new Response(
-      "Code Review Bot\n\nConfigure GitHub webhook to POST /webhook",
-    );
+    return new Response("Code Review Bot\n\nConfigure GitHub webhook to POST /webhook");
   },
 };
