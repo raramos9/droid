@@ -9,12 +9,17 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@cloudflare/sandbox": "*",
 		"@types/node": "^24.10.15",
+		"@vitest/coverage-v8": "^4.0.18",
 		"typescript": "^5.9.3",
+		"vitest": "^4.0.18",
 		"wrangler": "^4.69.0"
 	},
 	"author": "",
