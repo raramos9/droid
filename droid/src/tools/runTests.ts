@@ -1,7 +1,7 @@
 import { type Sandbox } from "@cloudflare/sandbox";
 import { z } from "zod";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { findPackageJson } from "../lib/writeIssueHelpers";
+import { findPackageJson } from "../lib/repoHelpers";
 
 export function createrunTestsTool(sandbox: Sandbox) {
   return betaZodTool({

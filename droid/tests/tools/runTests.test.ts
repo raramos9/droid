@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../src/lib/writeIssueHelpers", () => ({
+vi.mock("../../src/lib/repoHelpers", () => ({
   findPackageJson: vi.fn(),
 }));
 
-import { findPackageJson } from "../../src/lib/writeIssueHelpers";
+import { findPackageJson } from "../../src/lib/repoHelpers";
 import { createrunTestsTool } from "../../src/tools/runTests";
 
 function makeSandbox(pkgContent: object | null, execResult = { exitCode: 0, stdout: "ok", stderr: "" }) {

@@ -1,16 +1,10 @@
-import { proxyToSandbox, type Sandbox } from "@cloudflare/sandbox";
+import { proxyToSandbox } from "@cloudflare/sandbox";
 import { verifySignature } from "./lib/verify";
 import { fromGithubWebhook } from "./triggers/github";
 import { runAgent } from "./harness/index";
+import { type Env } from "./types/env";
 
 export { Sandbox } from "@cloudflare/sandbox";
-
-interface Env {
-  Sandbox: DurableObjectNamespace<Sandbox>;
-  GITHUB_TOKEN: string;
-  ANTHROPIC_API_KEY: string;
-  WEBHOOK_SECRET: string;
-}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
