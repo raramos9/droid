@@ -9,15 +9,15 @@ export function createrunTestsTool(sandbox: Sandbox) {
     description: "Test your written code",
     run: async (input) => {
       try {
-        const file = await sandbox.readFile("/workspace/repo/package.json");
+        const file = await sandbox.readFile("/workspace/repo/droid/package.json");
         const pkg = JSON.parse(file.content);
 
-        if (!pkg.scripts?.test){ 
+        if (!pkg.scripts?.test){
             return "No test script found in package.json"
         }
 
         const testResults = await sandbox.exec(pkg.scripts?.test, {
-          cwd: "/workspace/repo",
+          cwd: "/workspace/repo/droid",
         });
         return `Exit code: ${testResults.exitCode}\nOutput:
    ${testResults.stdout}\nErrors:
