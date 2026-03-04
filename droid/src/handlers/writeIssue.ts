@@ -36,9 +36,10 @@ export async function writeIssue(payload: any, env: Env): Promise<void> {
     // clone repo and create test branch
     console.log("Cloning repository...");
     const cloneUrl = `https://${env.GITHUB_TOKEN}@github.com/${repo.owner.login}/${repo.name}.git`;
-    await sandbox.exec(
+    const cloneResult = await sandbox.exec(
       `git clone --no-single-branch --branch=${payload.ref.replace("refs/heads/", "")} ${cloneUrl} /workspace/repo`,
     );
+    console.log("Clone result: ", cloneResult.exitCode, cloneResult.stderr)
 
     //  need to parse through all files in a repo
 

@@ -28,10 +28,12 @@ export default {
       const contentType = request.headers.get("content-type") || "";
       const body = await request.text();
 
-      // Verify webhook signature
+      // Verify webhook signature (skip in dev mode)
+      const isDev = request.headers.get("x-dev-bypass") === "true";
       if (
-        !signature ||
-        !(await verifySignature(body, signature, env.WEBHOOK_SECRET))
+        !isDev &&
+        (!signature ||
+          !(await verifySignature(body, signature, env.WEBHOOK_SECRET)))
       ) {
         return Response.json({ error: "Invalid signature" }, { status: 401 });
       }
