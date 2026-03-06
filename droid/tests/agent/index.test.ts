@@ -128,13 +128,13 @@ describe("runAgent", () => {
 
   it("pauses and saves pending action when gated tool is called", async () => {
     mockMessagesCreate.mockResolvedValueOnce(
-      gatedToolResponse("createIssue", { owner: "acme", repo: "app", title: "Bug", body: "details" }, "tu-gate-1"),
+      gatedToolResponse("pushCode", { repoPath: "/workspace/repo", branch: "fix/foo", message: "fix: bug" }, "tu-gate-1"),
     );
 
     const run = await runAgent(makeGoal(), makeCtx());
     expect(run.status).toBe("paused");
     expect(savePendingAction).toHaveBeenCalledWith(
-      expect.objectContaining({ tool: "createIssue", toolUseId: "tu-gate-1" }),
+      expect.objectContaining({ tool: "pushCode", toolUseId: "tu-gate-1" }),
       expect.any(String),
       expect.any(String),
     );
@@ -142,7 +142,7 @@ describe("runAgent", () => {
 
   it("saves paused checkpoint before returning on gated action", async () => {
     mockMessagesCreate.mockResolvedValueOnce(
-      gatedToolResponse("createPR", { owner: "a", repo: "b", head: "fix", base: "main", title: "T", body: "" }),
+      gatedToolResponse("mergePR", { owner: "a", repo: "b", pullNumber: 1 }),
     );
 
     await runAgent(makeGoal(), makeCtx());

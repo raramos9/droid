@@ -3,6 +3,7 @@ import {
   createFilesystemTools,
   createShellTools,
   createGithubReadTools,
+  createGithubWriteTools,
   createGatedTools,
   GatedActionError,
   buildAllTools,
@@ -238,46 +239,42 @@ describe("github read tools", () => {
   });
 });
 
+// ── GitHub write tools (free) ─────────────────────────────────────────────────
+
+describe("github write tools", () => {
+  it("createIssue calls octokit and returns number and url", async () => {
+    const octokit = makeOctokit();
+    octokit.issues.create.mockResolvedValueOnce({ data: { number: 42, html_url: "https://github.com/acme/app/issues/42" } });
+    const tools = createGithubWriteTools(octokit);
+    const createIssue = tools.find((t) => t.name === "createIssue")!;
+    const result = JSON.parse(await createIssue.execute({ owner: "acme", repo: "app", title: "Bug", body: "details" }));
+    expect(result.number).toBe(42);
+    expect(octokit.issues.create).toHaveBeenCalledWith({ owner: "acme", repo: "app", title: "Bug", body: "details" });
+  });
+
+  it("createComment calls octokit and returns id and url", async () => {
+    const octokit = makeOctokit();
+    octokit.issues.createComment.mockResolvedValueOnce({ data: { id: 99, html_url: "https://github.com/acme/app/issues/1#issuecomment-99" } });
+    const tools = createGithubWriteTools(octokit);
+    const createComment = tools.find((t) => t.name === "createComment")!;
+    const result = JSON.parse(await createComment.execute({ owner: "acme", repo: "app", issueNumber: 1, body: "hi" }));
+    expect(result.id).toBe(99);
+    expect(octokit.issues.createComment).toHaveBeenCalledWith({ owner: "acme", repo: "app", issue_number: 1, body: "hi" });
+  });
+
+  it("createPR calls octokit and returns number and url", async () => {
+    const octokit = makeOctokit();
+    octokit.pulls.create.mockResolvedValueOnce({ data: { number: 7, html_url: "https://github.com/acme/app/pull/7" } });
+    const tools = createGithubWriteTools(octokit);
+    const createPR = tools.find((t) => t.name === "createPR")!;
+    const result = JSON.parse(await createPR.execute({ owner: "acme", repo: "app", head: "fix/foo", base: "main", title: "Fix", body: "" }));
+    expect(result.number).toBe(7);
+  });
+});
+
 // ── Gated tools ───────────────────────────────────────────────────────────────
 
 describe("gated tools", () => {
-  it("createIssue throws GatedActionError instead of executing", async () => {
-    const tools = createGatedTools(makeOctokit(), makeSandbox());
-    const createIssue = tools.find((t) => t.name === "createIssue")!;
-    await expect(
-      createIssue.execute({ owner: "acme", repo: "app", title: "Bug", body: "details" }, "tool-use-123")
-    ).rejects.toThrow(GatedActionError);
-  });
-
-  it("GatedActionError carries tool name and args", async () => {
-    const tools = createGatedTools(makeOctokit(), makeSandbox());
-    const createIssue = tools.find((t) => t.name === "createIssue")!;
-    try {
-      await createIssue.execute({ owner: "acme", repo: "app", title: "Bug", body: "details" }, "tu-1");
-    } catch (err) {
-      expect(err).toBeInstanceOf(GatedActionError);
-      expect((err as GatedActionError).tool).toBe("createIssue");
-      expect((err as GatedActionError).toolUseId).toBe("tu-1");
-      expect((err as GatedActionError).args).toMatchObject({ title: "Bug" });
-    }
-  });
-
-  it("createComment throws GatedActionError", async () => {
-    const tools = createGatedTools(makeOctokit(), makeSandbox());
-    const createComment = tools.find((t) => t.name === "createComment")!;
-    await expect(
-      createComment.execute({ owner: "acme", repo: "app", issueNumber: 1, body: "hi" }, "tu-2")
-    ).rejects.toThrow(GatedActionError);
-  });
-
-  it("createPR throws GatedActionError", async () => {
-    const tools = createGatedTools(makeOctokit(), makeSandbox());
-    const createPR = tools.find((t) => t.name === "createPR")!;
-    await expect(
-      createPR.execute({ owner: "acme", repo: "app", head: "fix/foo", base: "main", title: "Fix", body: "" }, "tu-3")
-    ).rejects.toThrow(GatedActionError);
-  });
-
   it("pushCode throws GatedActionError", async () => {
     const tools = createGatedTools(makeOctokit(), makeSandbox());
     const pushCode = tools.find((t) => t.name === "pushCode")!;
@@ -294,14 +291,26 @@ describe("gated tools", () => {
     ).rejects.toThrow(GatedActionError);
   });
 
-  it("all 5 gated tools are present", () => {
+  it("GatedActionError carries tool name, args, and toolUseId", async () => {
+    const tools = createGatedTools(makeOctokit(), makeSandbox());
+    const pushCode = tools.find((t) => t.name === "pushCode")!;
+    try {
+      await pushCode.execute({ repoPath: "/workspace/repo", branch: "main", message: "chore: update" }, "tu-x");
+    } catch (err) {
+      expect(err).toBeInstanceOf(GatedActionError);
+      expect((err as GatedActionError).tool).toBe("pushCode");
+      expect((err as GatedActionError).toolUseId).toBe("tu-x");
+    }
+  });
+
+  it("only pushCode and mergePR are gated", () => {
     const tools = createGatedTools(makeOctokit(), makeSandbox());
     const names = tools.map((t) => t.name);
-    expect(names).toContain("createIssue");
-    expect(names).toContain("createComment");
-    expect(names).toContain("createPR");
     expect(names).toContain("pushCode");
     expect(names).toContain("mergePR");
+    expect(names).not.toContain("createIssue");
+    expect(names).not.toContain("createComment");
+    expect(names).not.toContain("createPR");
   });
 });
 

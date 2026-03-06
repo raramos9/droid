@@ -285,46 +285,98 @@ export function createGithubReadTools(octokit: ToolContext["octokit"]): DroidToo
   ];
 }
 
+export function createGithubWriteTools(octokit: ToolContext["octokit"]): DroidTool[] {
+  return [
+    {
+      name: "createIssue",
+      definition: {
+        name: "createIssue",
+        description: "Create a GitHub issue",
+        input_schema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            title: { type: "string" },
+            body: { type: "string" },
+          },
+          required: ["owner", "repo", "title", "body"],
+        },
+      },
+      execute: async (args) => {
+        const { data } = await octokit.issues.create({
+          owner: args.owner as string,
+          repo: args.repo as string,
+          title: args.title as string,
+          body: args.body as string,
+        });
+        return JSON.stringify({ number: data.number, url: data.html_url });
+      },
+    },
+    {
+      name: "createComment",
+      definition: {
+        name: "createComment",
+        description: "Post a comment on a GitHub issue or PR",
+        input_schema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            issueNumber: { type: "number" },
+            body: { type: "string" },
+          },
+          required: ["owner", "repo", "issueNumber", "body"],
+        },
+      },
+      execute: async (args) => {
+        const { data } = await octokit.issues.createComment({
+          owner: args.owner as string,
+          repo: args.repo as string,
+          issue_number: args.issueNumber as number,
+          body: args.body as string,
+        });
+        return JSON.stringify({ id: data.id, url: data.html_url });
+      },
+    },
+    {
+      name: "createPR",
+      definition: {
+        name: "createPR",
+        description: "Open a GitHub pull request",
+        input_schema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            head: { type: "string" },
+            base: { type: "string" },
+            title: { type: "string" },
+            body: { type: "string" },
+          },
+          required: ["owner", "repo", "head", "base", "title", "body"],
+        },
+      },
+      execute: async (args) => {
+        const { data } = await octokit.pulls.create({
+          owner: args.owner as string,
+          repo: args.repo as string,
+          head: args.head as string,
+          base: args.base as string,
+          title: args.title as string,
+          body: args.body as string,
+        });
+        return JSON.stringify({ number: data.number, url: data.html_url });
+      },
+    },
+  ];
+}
+
 export function createGatedTools(
   _octokit: ToolContext["octokit"],
   _sandbox: ToolContext["sandbox"],
 ): DroidTool[] {
   return [
-    makeGatedTool(
-      "createIssue",
-      "Create a GitHub issue (requires approval before executing)",
-      {
-        owner: { type: "string" },
-        repo: { type: "string" },
-        title: { type: "string" },
-        body: { type: "string" },
-      },
-      ["owner", "repo", "title", "body"],
-    ),
-    makeGatedTool(
-      "createComment",
-      "Post a comment on a GitHub issue or PR (requires approval)",
-      {
-        owner: { type: "string" },
-        repo: { type: "string" },
-        issueNumber: { type: "number" },
-        body: { type: "string" },
-      },
-      ["owner", "repo", "issueNumber", "body"],
-    ),
-    makeGatedTool(
-      "createPR",
-      "Open a GitHub pull request (requires approval)",
-      {
-        owner: { type: "string" },
-        repo: { type: "string" },
-        head: { type: "string" },
-        base: { type: "string" },
-        title: { type: "string" },
-        body: { type: "string" },
-      },
-      ["owner", "repo", "head", "base", "title", "body"],
-    ),
     makeGatedTool(
       "pushCode",
       "Commit and push code changes to the remote repository (requires approval)",
@@ -356,6 +408,7 @@ export function buildAllTools(
     ...createFilesystemTools(sandbox),
     ...createShellTools(sandbox),
     ...createGithubReadTools(octokit),
+    ...createGithubWriteTools(octokit),
     ...createGatedTools(octokit, sandbox),
   ];
 }
