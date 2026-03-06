@@ -9,14 +9,25 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@cloudflare/sandbox": "*",
 		"@types/node": "^24.10.15",
+		"@vitest/coverage-v8": "^4.0.18",
 		"typescript": "^5.9.3",
+		"vitest": "^4.0.18",
 		"wrangler": "^4.69.0"
 	},
 	"author": "",
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.78.0",
+		"@octokit/rest": "^22.0.1",
+		"i": "^0.3.7",
+		"zod": "^4.3.6"
+	}
 }
