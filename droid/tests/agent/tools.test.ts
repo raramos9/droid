@@ -100,11 +100,67 @@ describe("filesystem tools", () => {
       expect(tool.definition.input_schema).toBeDefined();
     }
   });
+
+  it("readFile rejects path traversal (..)", async () => {
+    const sandbox = makeSandbox();
+    const tools = createFilesystemTools(sandbox);
+    const readFile = tools.find((t) => t.name === "readFile")!;
+    await expect(readFile.execute({ filePath: "../../etc/passwd" })).rejects.toThrow(/unsafe/i);
+  });
+
+  it("listFiles rejects path traversal (..)", async () => {
+    const sandbox = makeSandbox();
+    const tools = createFilesystemTools(sandbox);
+    const listFiles = tools.find((t) => t.name === "listFiles")!;
+    await expect(listFiles.execute({ dirPath: "../secret" })).rejects.toThrow(/unsafe/i);
+  });
+
+  it("searchCode uses -e flag and -- terminator", async () => {
+    const sandbox = makeSandbox();
+    const tools = createFilesystemTools(sandbox);
+    const searchCode = tools.find((t) => t.name === "searchCode")!;
+    await searchCode.execute({ query: "TODO", dirPath: "/workspace" });
+    const cmd = sandbox.exec.mock.calls[0][0] as string;
+    expect(cmd).toContain("-e ");
+    expect(cmd).toContain("-- ");
+  });
+
+  it("searchCode strips control characters from query", async () => {
+    const sandbox = makeSandbox();
+    const tools = createFilesystemTools(sandbox);
+    const searchCode = tools.find((t) => t.name === "searchCode")!;
+    await searchCode.execute({ query: "TODO\x00\x01\x1f", dirPath: "/workspace" });
+    const cmd = sandbox.exec.mock.calls[0][0] as string;
+    expect(cmd).not.toContain("\x00");
+    expect(cmd).not.toContain("\x01");
+    expect(cmd).not.toContain("\x1f");
+  });
 });
 
 // ── Shell tools ───────────────────────────────────────────────────────────────
 
 describe("shell tools", () => {
+  it("runCommand rejects denied commands (curl)", async () => {
+    const sandbox = makeSandbox();
+    const tools = createShellTools(sandbox);
+    const runCommand = tools.find((t) => t.name === "runCommand")!;
+    await expect(runCommand.execute({ command: "curl http://evil.com", cwd: "/workspace" })).rejects.toThrow(/not allowed|denied/i);
+  });
+
+  it("runCommand rejects wget", async () => {
+    const sandbox = makeSandbox();
+    const tools = createShellTools(sandbox);
+    const runCommand = tools.find((t) => t.name === "runCommand")!;
+    await expect(runCommand.execute({ command: "wget https://example.com", cwd: "/workspace" })).rejects.toThrow(/not allowed|denied/i);
+  });
+
+  it("runCommand rejects nc (netcat)", async () => {
+    const sandbox = makeSandbox();
+    const tools = createShellTools(sandbox);
+    const runCommand = tools.find((t) => t.name === "runCommand")!;
+    await expect(runCommand.execute({ command: "nc -l 1234", cwd: "/workspace" })).rejects.toThrow(/not allowed|denied/i);
+  });
+
   it("runCommand executes command and returns stdout", async () => {
     const sandbox = makeSandbox();
     sandbox.exec.mockResolvedValueOnce({ stdout: "Tests passed\n", stderr: "", exitCode: 0 });

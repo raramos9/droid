@@ -186,6 +186,27 @@ describe("runAgent", () => {
     expect(run.error).toContain("API down");
   });
 
+  it("appends error tool_result when non-gated tool throws", async () => {
+    mockMessagesCreate
+      .mockResolvedValueOnce(
+        toolUseResponse("readFile", { filePath: "/workspace/repo/src/index.ts" }),
+      )
+      .mockResolvedValueOnce(endTurnResponse());
+
+    const ctx = makeCtx();
+    ctx.sandbox.readFile.mockRejectedValueOnce(new Error("disk error"));
+
+    const run = await runAgent(makeGoal(), ctx);
+    expect(run.status).toBe("completed");
+    const secondCallMessages = mockMessagesCreate.mock.calls[1][0].messages;
+    const hasErrorResult = secondCallMessages.some(
+      (m: any) =>
+        Array.isArray(m.content) &&
+        m.content.some((c: any) => c.type === "tool_result" && c.content.includes("Error:")),
+    );
+    expect(hasErrorResult).toBe(true);
+  });
+
   it("saves checkpoint with running status between iterations", async () => {
     mockMessagesCreate
       .mockResolvedValueOnce(toolUseResponse("listFiles", { dirPath: "/workspace/repo" }))

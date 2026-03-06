@@ -13,7 +13,7 @@ interface ResumeOpts {
 
 export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts = {}): Promise<AgentRun> {
   const sandboxId = `droid-${goal.repo.owner}-${goal.repo.name}-${Date.now()}`;
-  const sandbox = getSandbox(env.Sandbox as any, sandboxId);
+  const sandbox = getSandbox(env.Sandbox as Parameters<typeof getSandbox>[0], sandboxId);
   const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
 
   let existingRun: AgentRun | undefined;
@@ -38,8 +38,7 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
     return existingRun
       ? await runAgent(goal, ctx, { existingRun })
       : await runAgent(goal, ctx);
-  } catch (error: any) {
-    console.error("Harness error:", error);
+  } catch (error) {
     return {
       runId: resumeOpts.existingRunId ?? crypto.randomUUID(),
       goal,
@@ -47,7 +46,7 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
       messages: [],
       iteration: 0,
       artifacts: [],
-      error: error.message,
+      error: (error as Error).message,
     };
   } finally {
     await sandbox.destroy();
