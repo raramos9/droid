@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockSandbox = vi.hoisted(() => ({
-  exec: vi.fn(),
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
+  exec: vi.fn().mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
+  readFile: vi.fn().mockResolvedValue({ content: "" }),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
   destroy: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -11,99 +12,98 @@ vi.mock("@cloudflare/sandbox", () => ({
   getSandbox: vi.fn().mockReturnValue(mockSandbox),
 }));
 
-vi.mock("../../src/agents/writeIssue", () => ({
-  writeIssueAgent: {
-    name: "writeIssue",
-    inputSchema: { parse: vi.fn((x) => x) },
-    tools: [],
-    run: vi.fn().mockResolvedValue({ success: true, artifacts: ["done"] }),
-  },
-}));
-
-vi.mock("../../src/agents/reviewPR", () => ({
-  reviewPRAgent: {
-    name: "reviewPR",
-    inputSchema: { parse: vi.fn((x) => x) },
-    tools: [],
-    run: vi.fn().mockResolvedValue({ success: true, artifacts: ["review posted"] }),
-  },
+const mockRunAgent = vi.hoisted(() => vi.fn());
+vi.mock("../../src/agent/index", () => ({
+  runAgent: mockRunAgent,
 }));
 
 import { getSandbox } from "@cloudflare/sandbox";
-import { runAgent } from "../../src/harness/index";
-import { writeIssueAgent } from "../../src/agents/writeIssue";
-import { reviewPRAgent } from "../../src/agents/reviewPR";
+import { runDroidAgent } from "../../src/harness/index";
 
 const env = {
   Sandbox: {} as any,
   GITHUB_TOKEN: "tok",
   ANTHROPIC_API_KEY: "ak",
   WEBHOOK_SECRET: "sec",
+  SUPABASE_URL: "https://test.supabase.co",
+  SUPABASE_SERVICE_KEY: "svc-key",
 };
 
-const pushDispatch = {
-  agent: "writeIssue" as const,
-  payload: {
-    repository: { owner: { login: "acme" }, name: "repo" },
-    ref: "refs/heads/main",
-    before: "aaa",
-    after: "bbb12345",
-  },
+const pushGoal = {
+  type: "push" as const,
+  repo: { owner: "acme", name: "repo" },
+  context: { sha: "abc123", ref: "refs/heads/main" },
 };
 
-const prDispatch = {
-  agent: "reviewPR" as const,
-  payload: {
-    action: "opened",
-    pull_request: { number: 1, head: { ref: "fix", sha: "a" }, base: { ref: "main", sha: "b" } },
-    repository: { owner: { login: "acme" }, name: "repo" },
-  },
+const prGoal = {
+  type: "pull_request" as const,
+  repo: { owner: "acme", name: "repo" },
+  context: { prNumber: 42, title: "Fix auth" },
 };
 
-describe("runAgent", () => {
-  beforeEach(() => vi.clearAllMocks());
+const completedRun = {
+  runId: "run-1",
+  goal: pushGoal,
+  status: "completed" as const,
+  messages: [],
+  iteration: 1,
+  artifacts: ["Issue #1 created"],
+};
 
-  it("routes writeIssue dispatch to writeIssueAgent", async () => {
-    await runAgent(pushDispatch, env);
-    expect(writeIssueAgent.run).toHaveBeenCalled();
-    expect(reviewPRAgent.run).not.toHaveBeenCalled();
+describe("runDroidAgent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRunAgent.mockResolvedValue(completedRun);
   });
 
-  it("routes reviewPR dispatch to reviewPRAgent", async () => {
-    await runAgent(prDispatch, env);
-    expect(reviewPRAgent.run).toHaveBeenCalled();
-    expect(writeIssueAgent.run).not.toHaveBeenCalled();
+  it("calls runAgent with the goal", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockRunAgent).toHaveBeenCalledWith(
+      pushGoal,
+      expect.objectContaining({ anthropicApiKey: "ak" }),
+    );
   });
 
-  it("calls sandbox.destroy in finally — even on success", async () => {
-    await runAgent(pushDispatch, env);
-    expect(mockSandbox.destroy).toHaveBeenCalledOnce();
+  it("passes supabaseUrl and supabaseKey from env", async () => {
+    await runDroidAgent(pushGoal, env);
+    const ctx = mockRunAgent.mock.calls[0][1];
+    expect(ctx.supabaseUrl).toBe("https://test.supabase.co");
+    expect(ctx.supabaseKey).toBe("svc-key");
   });
 
-  it("calls sandbox.destroy in finally — even on error", async () => {
-    vi.mocked(writeIssueAgent.run).mockRejectedValueOnce(new Error("boom"));
-    await runAgent(pushDispatch, env);
-    expect(mockSandbox.destroy).toHaveBeenCalledOnce();
-  });
-
-  it("returns AgentResult from agent", async () => {
-    const result = await runAgent(pushDispatch, env);
-    expect(result.success).toBe(true);
-    expect(result.artifacts).toContain("done");
-  });
-
-  it("returns success false when agent throws", async () => {
-    vi.mocked(writeIssueAgent.run).mockRejectedValueOnce(new Error("fatal"));
-    const result = await runAgent(pushDispatch, env);
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("fatal");
-  });
-
-  it("passes correct AgentContext to agent", async () => {
-    await runAgent(pushDispatch, env);
-    const ctx = vi.mocked(writeIssueAgent.run).mock.calls[0][1];
-    expect(ctx.githubToken).toBe("tok");
-    expect(ctx.anthropicApiKey).toBe("ak");
+  it("passes sandbox from getSandbox", async () => {
+    await runDroidAgent(pushGoal, env);
+    const ctx = mockRunAgent.mock.calls[0][1];
     expect(ctx.sandbox).toBe(mockSandbox);
+  });
+
+  it("calls sandbox.destroy after agent run", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockSandbox.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("calls sandbox.destroy even when agent throws", async () => {
+    mockRunAgent.mockRejectedValueOnce(new Error("agent crashed"));
+    await runDroidAgent(pushGoal, env);
+    expect(mockSandbox.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("returns the AgentRun from runAgent", async () => {
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("completed");
+    expect(result.artifacts).toContain("Issue #1 created");
+  });
+
+  it("returns a failed run when agent throws", async () => {
+    mockRunAgent.mockRejectedValueOnce(new Error("boom"));
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("failed");
+    expect(result.error).toContain("boom");
+  });
+
+  it("works for pull_request goal", async () => {
+    mockRunAgent.mockResolvedValueOnce({ ...completedRun, goal: prGoal });
+    await runDroidAgent(prGoal, env);
+    expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything());
   });
 });

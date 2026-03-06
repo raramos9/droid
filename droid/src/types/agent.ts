@@ -1,4 +1,5 @@
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+export type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export type TriggerType = "push" | "issue_created" | "issue_comment" | "pull_request";
 export type AgentStatus = "running" | "paused" | "completed" | "failed";
@@ -31,8 +32,8 @@ export interface ToolContext {
   sandbox: {
     exec: (cmd: string, opts?: { cwd?: string }) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
     readFile: (path: string) => Promise<{ content: string }>;
-    writeFile: (path: string, content: string) => Promise<void>;
-    mkdir: (path: string, opts?: { recursive?: boolean }) => Promise<void>;
+    writeFile: (path: string, content: string) => Promise<unknown>;
+    mkdir: (path: string, opts?: { recursive?: boolean }) => Promise<unknown>;
   };
   octokit: any;
 }

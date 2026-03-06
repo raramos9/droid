@@ -5,7 +5,7 @@ vi.mock("../src/lib/verify", () => ({
 }));
 
 vi.mock("../src/harness/index", () => ({
-  runAgent: vi.fn().mockResolvedValue({ success: true, artifacts: [] }),
+  runDroidAgent: vi.fn().mockResolvedValue({ status: "completed", artifacts: [] }),
 }));
 
 vi.mock("@cloudflare/sandbox", () => ({
@@ -13,15 +13,22 @@ vi.mock("@cloudflare/sandbox", () => ({
   getSandbox: vi.fn(),
 }));
 
+vi.mock("../src/agent/checkpoint", () => ({
+  loadCheckpoint: vi.fn(),
+  savePendingAction: vi.fn(),
+}));
+
 import worker from "../src/index";
 import { verifySignature } from "../src/lib/verify";
-import { runAgent } from "../src/harness/index";
+import { runDroidAgent } from "../src/harness/index";
 
 const env = {
   Sandbox: {} as any,
   GITHUB_TOKEN: "tok",
   ANTHROPIC_API_KEY: "ak",
   WEBHOOK_SECRET: "sec",
+  SUPABASE_URL: "https://test.supabase.co",
+  SUPABASE_SERVICE_KEY: "svc-key",
 };
 
 function makeCtx() {
@@ -50,7 +57,7 @@ const pushBody = {
 
 const prBody = {
   action: "opened",
-  pull_request: { number: 1, head: { ref: "fix", sha: "a" }, base: { ref: "main", sha: "b" } },
+  pull_request: { number: 1, title: "Fix bug", head: { ref: "fix", sha: "a" }, base: { ref: "main", sha: "b" } },
   repository: { owner: { login: "acme" }, name: "repo" },
 };
 
@@ -66,21 +73,19 @@ describe("fetch handler", () => {
 
   it("dispatches push event via waitUntil", async () => {
     const ctx = makeCtx();
-    const req = makeRequest("push", pushBody);
-    await worker.fetch(req, env, ctx);
+    await worker.fetch(makeRequest("push", pushBody), env, ctx);
     expect(ctx.waitUntil).toHaveBeenCalledOnce();
   });
 
   it("dispatches PR opened event via waitUntil", async () => {
     const ctx = makeCtx();
-    const req = makeRequest("pull_request", prBody);
-    await worker.fetch(req, env, ctx);
+    await worker.fetch(makeRequest("pull_request", prBody), env, ctx);
     expect(ctx.waitUntil).toHaveBeenCalledOnce();
   });
 
-  it("returns Event ignored for unknown events", async () => {
+  it("returns Event ignored for unhandled events", async () => {
     const ctx = makeCtx();
-    const req = makeRequest("issues", {});
+    const req = makeRequest("star", {});
     const res = await worker.fetch(req, env, ctx);
     const json = await res.json() as any;
     expect(json.message).toMatch(/ignored/i);
@@ -89,8 +94,7 @@ describe("fetch handler", () => {
 
   it("returns 200 JSON for valid push", async () => {
     const ctx = makeCtx();
-    const req = makeRequest("push", pushBody);
-    const res = await worker.fetch(req, env, ctx);
+    const res = await worker.fetch(makeRequest("push", pushBody), env, ctx);
     expect(res.status).toBe(200);
     const json = await res.json() as any;
     expect(json.message).toBeTruthy();
@@ -98,8 +102,7 @@ describe("fetch handler", () => {
 
   it("dev bypass skips signature verification", async () => {
     const ctx = makeCtx();
-    const req = makeRequest("push", pushBody, { "x-dev-bypass": "true" });
-    const res = await worker.fetch(req, env, ctx);
+    const res = await worker.fetch(makeRequest("push", pushBody, { "x-dev-bypass": "true" }), env, ctx);
     expect(verifySignature).not.toHaveBeenCalled();
     expect(res.status).toBe(200);
   });
