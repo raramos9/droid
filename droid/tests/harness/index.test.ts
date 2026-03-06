@@ -17,7 +17,13 @@ vi.mock("../../src/agent/index", () => ({
   runAgent: mockRunAgent,
 }));
 
+const mockCloneRepo = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock("../../src/lib/cloneRepo", () => ({
+  cloneRepo: mockCloneRepo,
+}));
+
 import { getSandbox } from "@cloudflare/sandbox";
+import { cloneRepo } from "../../src/lib/cloneRepo";
 import { runDroidAgent } from "../../src/harness/index";
 
 const env = {
@@ -27,6 +33,7 @@ const env = {
   WEBHOOK_SECRET: "sec",
   SUPABASE_URL: "https://test.supabase.co",
   SUPABASE_SERVICE_KEY: "svc-key",
+  RESUME_API_KEY: "resume-secret",
 };
 
 const pushGoal = {
@@ -105,5 +112,24 @@ describe("runDroidAgent", () => {
     mockRunAgent.mockResolvedValueOnce({ ...completedRun, goal: prGoal });
     await runDroidAgent(prGoal, env);
     expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything());
+  });
+
+  it("calls cloneRepo with sandbox, owner, repo, and GITHUB_TOKEN before runAgent", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok");
+    expect(mockCloneRepo).toHaveBeenCalledBefore(mockRunAgent as any);
+  });
+
+  it("clones repo for pull_request goal too", async () => {
+    await runDroidAgent(prGoal, env);
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok");
+  });
+
+  it("returns failed run and destroys sandbox when cloneRepo throws", async () => {
+    mockCloneRepo.mockRejectedValueOnce(new Error("clone failed: auth error"));
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("failed");
+    expect(result.error).toContain("clone failed");
+    expect(mockSandbox.destroy).toHaveBeenCalledOnce();
   });
 });

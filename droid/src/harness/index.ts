@@ -2,6 +2,7 @@ import { getSandbox } from "@cloudflare/sandbox";
 import { Octokit } from "@octokit/rest";
 import { runAgent } from "../agent/index";
 import { loadCheckpoint } from "../agent/checkpoint";
+import { cloneRepo } from "../lib/cloneRepo";
 import type { Goal, AgentRun, MessageParam } from "../types/agent";
 import type { Env } from "../types/env";
 
@@ -28,6 +29,8 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
   }
 
   try {
+    await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, env.GITHUB_TOKEN);
+
     const ctx = {
       sandbox,
       octokit,
