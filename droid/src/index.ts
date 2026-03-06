@@ -2,7 +2,7 @@ import { proxyToSandbox } from "@cloudflare/sandbox";
 import { verifySignature } from "./lib/verify";
 import { fromGithubWebhook } from "./triggers/github";
 import { runDroidAgent } from "./harness/index";
-import { loadCheckpoint, savePendingAction } from "./agent/checkpoint";
+import { loadCheckpoint } from "./agent/checkpoint";
 import { type Env } from "./types/env";
 
 export { Sandbox } from "@cloudflare/sandbox";
@@ -20,19 +20,24 @@ export default {
       const contentType = request.headers.get("content-type") || "";
       const body = await request.text();
 
-      const isDev = request.headers.get("x-dev-bypass") === "true";
+      const isDev = env.ENVIRONMENT === "development" && request.headers.get("x-dev-bypass") === "true";
       if (!isDev && (!signature || !(await verifySignature(body, signature, env.WEBHOOK_SECRET)))) {
         return Response.json({ error: "Invalid signature" }, { status: 401 });
       }
 
-      const event = request.headers.get("x-github-event");
-      const payload = contentType.includes("application/json")
-        ? JSON.parse(body)
-        : JSON.parse(new URLSearchParams(body).get("payload") || "{}");
+      let rawPayload: unknown;
+      try {
+        rawPayload = contentType.includes("application/json")
+          ? JSON.parse(body)
+          : JSON.parse(new URLSearchParams(body).get("payload") || "{}");
+      } catch {
+        return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
 
+      const event = request.headers.get("x-github-event");
       let goal;
       try {
-        goal = fromGithubWebhook(event, payload);
+        goal = fromGithubWebhook(event, rawPayload);
       } catch {
         return Response.json({ message: "Event ignored" });
       }
@@ -40,36 +45,73 @@ export default {
         return Response.json({ message: "Event ignored" });
       }
 
-      ctx.waitUntil(runDroidAgent(goal, env).catch(console.error));
+      ctx.waitUntil(runDroidAgent(goal, env).catch(() => {}));
       return Response.json({ message: `Droid started for ${goal.type}` });
     }
 
     // ── Resume (called by dashboard after action approval) ───────────────────
     const resumeMatch = url.pathname.match(/^\/resume\/([a-zA-Z0-9\-]+)$/);
     if (resumeMatch && request.method === "POST") {
+      const authHeader = request.headers.get("authorization");
+      if (authHeader !== `Bearer ${env.RESUME_API_KEY}`) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
       const runId = resumeMatch[1];
-      const { toolUseId, result } = await request.json() as { toolUseId: string; result: string };
+
+      let body: { toolUseId?: unknown; result?: unknown };
+      try {
+        body = await request.json() as { toolUseId?: unknown; result?: unknown };
+      } catch {
+        return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
+
+      const { toolUseId, result } = body;
+      if (typeof toolUseId !== "string" || typeof result !== "string") {
+        return Response.json({ error: "toolUseId and result are required strings" }, { status: 400 });
+      }
 
       const checkpoint = await loadCheckpoint(runId, env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
       if (checkpoint.status !== "paused") {
         return Response.json({ error: "Run is not paused" }, { status: 400 });
       }
 
-      // Inject tool result into messages and continue
+      // Find every tool_use in the last assistant turn that still needs a result.
+      // When the gate fires, partial results are not saved, so ALL tool_uses in
+      // that turn may be unresolved. We inject the provided result for the gated
+      // tool and a placeholder for the rest so Anthropic accepts the conversation.
+      const lastAssistant = [...checkpoint.messages].reverse().find((m) => m.role === "assistant");
+      const lastContent = Array.isArray(lastAssistant?.content) ? lastAssistant!.content : [];
+      const resolvedIds = new Set(
+        checkpoint.messages.flatMap((m) =>
+          m.role === "user" && Array.isArray(m.content)
+            ? (m.content as Array<{ type: string; tool_use_id?: string }>)
+                .filter((b) => b.type === "tool_result" && b.tool_use_id)
+                .map((b) => b.tool_use_id!)
+            : [],
+        ),
+      );
+      const unresolvedIds = (lastContent as Array<{ type: string; id?: string }>)
+        .filter((b) => b.type === "tool_use" && b.id && !resolvedIds.has(b.id))
+        .map((b) => b.id!);
+
+      const toolResults = unresolvedIds.map((id) => ({
+        type: "tool_result" as const,
+        tool_use_id: id,
+        content: id === toolUseId ? result : "Tool execution was interrupted; this action was not completed.",
+      }));
+
       const updatedMessages = [
         ...checkpoint.messages,
-        {
-          role: "user" as const,
-          content: [{ type: "tool_result", tool_use_id: toolUseId, content: result }],
-        },
-      ];
+        { role: "user" as const, content: toolResults },
+      ] as import("./types/agent").MessageParam[];
 
       ctx.waitUntil(
         runDroidAgent(checkpoint.goal, env, {
           existingRunId: runId,
           initialMessages: updatedMessages,
           startIteration: checkpoint.iteration,
-        }).catch(console.error),
+        }).catch(() => {}),
       );
 
       return Response.json({ message: "Run resumed", runId });

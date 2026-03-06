@@ -26,10 +26,21 @@ export class GatedActionError extends Error {
 }
 
 // Sanitize a path arg: only allow alphanumeric, slashes, dots, underscores, hyphens.
+// Also blocks path traversal via "..".
 function sanitizePath(p: unknown): string {
   const s = String(p);
+  if (s.includes("..")) throw new Error(`Unsafe path argument: ${s}`);
   if (!/^[a-zA-Z0-9/_.\-]+$/.test(s)) throw new Error(`Unsafe path argument: ${s}`);
   return s;
+}
+
+const COMMAND_DENYLIST = /\b(curl|wget|nc|netcat|ssh|scp|rsync|env|printenv|eval)\b/;
+
+function assertCommandAllowed(command: string): void {
+  if (COMMAND_DENYLIST.test(command)) {
+    const matched = command.match(COMMAND_DENYLIST)?.[0] ?? command.split(" ")[0];
+    throw new Error(`Command not allowed: ${matched}`);
+  }
 }
 
 function makeGatedTool(
@@ -65,8 +76,9 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
         },
       },
       execute: async (args) => {
+        const safePath = sanitizePath(args.filePath);
         try {
-          const file = await sandbox.readFile(sanitizePath(args.filePath));
+          const file = await sandbox.readFile(safePath);
           return file.content;
         } catch {
           throw new Error("Error reading file");
@@ -109,7 +121,6 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
       },
       execute: async (args) => {
         const dir = sanitizePath(args.dirPath);
-        // sandbox.exec runs inside an isolated container — input is sanitized above
         const result = await sandbox.exec(`ls -la ${dir}`);
         return result.stdout || result.stderr;
       },
@@ -130,10 +141,10 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
       },
       execute: async (args) => {
         const dir = sanitizePath(args.dirPath);
-        // Wrap query in single quotes and escape any internal single quotes
-        const safeQuery = String(args.query).replace(/'/g, "'\\''");
+        // Strip control characters, then escape single quotes
+        const cleanQuery = String(args.query).replace(/[\x00-\x1f\x7f]/g, "").replace(/'/g, "'\\''");
         const result = await sandbox.exec(
-          `grep -r --include="*.ts" -n '${safeQuery}' ${dir} || true`,
+          `grep -r --include="*.ts" -n -e '${cleanQuery}' -- ${dir} || true`,
         );
         return result.stdout || "No matches found";
       },
@@ -158,6 +169,7 @@ export function createShellTools(sandbox: ToolContext["sandbox"]): DroidTool[] {
         },
       },
       execute: async (args) => {
+        assertCommandAllowed(args.command as string);
         const result = await sandbox.exec(args.command as string, {
           cwd: sanitizePath(args.cwd),
         });
@@ -213,7 +225,7 @@ export function createGithubReadTools(octokit: ToolContext["octokit"]): DroidToo
           repo: args.repo,
           state: "open",
         });
-        return JSON.stringify(data.map((i: any) => ({ number: i.number, title: i.title })));
+        return JSON.stringify(data.map((i: { number: number; title: string }) => ({ number: i.number, title: i.title })));
       },
     },
     {
@@ -263,7 +275,7 @@ export function createGithubReadTools(octokit: ToolContext["octokit"]): DroidToo
           base: args.base,
           head: args.head,
         });
-        const files = (data.files || []).map((f: any) => ({
+        const files = (data.files || []).map((f: { filename: string; patch?: string }) => ({
           filename: f.filename,
           patch: f.patch,
         }));
@@ -273,46 +285,98 @@ export function createGithubReadTools(octokit: ToolContext["octokit"]): DroidToo
   ];
 }
 
+export function createGithubWriteTools(octokit: ToolContext["octokit"]): DroidTool[] {
+  return [
+    {
+      name: "createIssue",
+      definition: {
+        name: "createIssue",
+        description: "Create a GitHub issue",
+        input_schema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            title: { type: "string" },
+            body: { type: "string" },
+          },
+          required: ["owner", "repo", "title", "body"],
+        },
+      },
+      execute: async (args) => {
+        const { data } = await octokit.issues.create({
+          owner: args.owner as string,
+          repo: args.repo as string,
+          title: args.title as string,
+          body: args.body as string,
+        });
+        return JSON.stringify({ number: data.number, url: data.html_url });
+      },
+    },
+    {
+      name: "createComment",
+      definition: {
+        name: "createComment",
+        description: "Post a comment on a GitHub issue or PR",
+        input_schema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            issueNumber: { type: "number" },
+            body: { type: "string" },
+          },
+          required: ["owner", "repo", "issueNumber", "body"],
+        },
+      },
+      execute: async (args) => {
+        const { data } = await octokit.issues.createComment({
+          owner: args.owner as string,
+          repo: args.repo as string,
+          issue_number: args.issueNumber as number,
+          body: args.body as string,
+        });
+        return JSON.stringify({ id: data.id, url: data.html_url });
+      },
+    },
+    {
+      name: "createPR",
+      definition: {
+        name: "createPR",
+        description: "Open a GitHub pull request",
+        input_schema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            head: { type: "string" },
+            base: { type: "string" },
+            title: { type: "string" },
+            body: { type: "string" },
+          },
+          required: ["owner", "repo", "head", "base", "title", "body"],
+        },
+      },
+      execute: async (args) => {
+        const { data } = await octokit.pulls.create({
+          owner: args.owner as string,
+          repo: args.repo as string,
+          head: args.head as string,
+          base: args.base as string,
+          title: args.title as string,
+          body: args.body as string,
+        });
+        return JSON.stringify({ number: data.number, url: data.html_url });
+      },
+    },
+  ];
+}
+
 export function createGatedTools(
-  octokit: ToolContext["octokit"],
-  sandbox: ToolContext["sandbox"],
+  _octokit: ToolContext["octokit"],
+  _sandbox: ToolContext["sandbox"],
 ): DroidTool[] {
   return [
-    makeGatedTool(
-      "createIssue",
-      "Create a GitHub issue (requires approval before executing)",
-      {
-        owner: { type: "string" },
-        repo: { type: "string" },
-        title: { type: "string" },
-        body: { type: "string" },
-      },
-      ["owner", "repo", "title", "body"],
-    ),
-    makeGatedTool(
-      "createComment",
-      "Post a comment on a GitHub issue or PR (requires approval)",
-      {
-        owner: { type: "string" },
-        repo: { type: "string" },
-        issueNumber: { type: "number" },
-        body: { type: "string" },
-      },
-      ["owner", "repo", "issueNumber", "body"],
-    ),
-    makeGatedTool(
-      "createPR",
-      "Open a GitHub pull request (requires approval)",
-      {
-        owner: { type: "string" },
-        repo: { type: "string" },
-        head: { type: "string" },
-        base: { type: "string" },
-        title: { type: "string" },
-        body: { type: "string" },
-      },
-      ["owner", "repo", "head", "base", "title", "body"],
-    ),
     makeGatedTool(
       "pushCode",
       "Commit and push code changes to the remote repository (requires approval)",
@@ -344,6 +408,7 @@ export function buildAllTools(
     ...createFilesystemTools(sandbox),
     ...createShellTools(sandbox),
     ...createGithubReadTools(octokit),
+    ...createGithubWriteTools(octokit),
     ...createGatedTools(octokit, sandbox),
   ];
 }

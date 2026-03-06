@@ -1,4 +1,5 @@
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import type { Octokit } from "@octokit/rest";
 export type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export type TriggerType = "push" | "issue_created" | "issue_comment" | "pull_request";
@@ -35,5 +36,5 @@ export interface ToolContext {
     writeFile: (path: string, content: string) => Promise<unknown>;
     mkdir: (path: string, opts?: { recursive?: boolean }) => Promise<unknown>;
   };
-  octokit: any;
+  octokit: InstanceType<typeof Octokit>;
 }

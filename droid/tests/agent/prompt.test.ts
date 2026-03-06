@@ -80,4 +80,9 @@ describe("buildGoalMessage", () => {
       expect(msg.length).toBeGreaterThan(20);
     }
   });
+
+  it("throws for unknown trigger type (exhaustiveness check)", () => {
+    const goal = { type: "unknown_type" as any, repo: { owner: "acme", name: "app" }, context: {} };
+    expect(() => buildGoalMessage(goal)).toThrow();
+  });
 });

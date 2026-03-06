@@ -66,5 +66,10 @@ Pull request #${prNumber} has been opened: "${title}"
 
 Your goal: Review the code changes in this pull request. Read the diff, check for bugs, security issues, and code quality concerns. Post a thorough code review comment summarizing your findings.`;
     }
+
+    default: {
+      const _exhaustive: never = goal.type;
+      throw new Error(`Unhandled trigger type: ${_exhaustive}`);
+    }
   }
 }

@@ -128,13 +128,13 @@ describe("runAgent", () => {
 
   it("pauses and saves pending action when gated tool is called", async () => {
     mockMessagesCreate.mockResolvedValueOnce(
-      gatedToolResponse("createIssue", { owner: "acme", repo: "app", title: "Bug", body: "details" }, "tu-gate-1"),
+      gatedToolResponse("pushCode", { repoPath: "/workspace/repo", branch: "fix/foo", message: "fix: bug" }, "tu-gate-1"),
     );
 
     const run = await runAgent(makeGoal(), makeCtx());
     expect(run.status).toBe("paused");
     expect(savePendingAction).toHaveBeenCalledWith(
-      expect.objectContaining({ tool: "createIssue", toolUseId: "tu-gate-1" }),
+      expect.objectContaining({ tool: "pushCode", toolUseId: "tu-gate-1" }),
       expect.any(String),
       expect.any(String),
     );
@@ -142,7 +142,7 @@ describe("runAgent", () => {
 
   it("saves paused checkpoint before returning on gated action", async () => {
     mockMessagesCreate.mockResolvedValueOnce(
-      gatedToolResponse("createPR", { owner: "a", repo: "b", head: "fix", base: "main", title: "T", body: "" }),
+      gatedToolResponse("mergePR", { owner: "a", repo: "b", pullNumber: 1 }),
     );
 
     await runAgent(makeGoal(), makeCtx());
@@ -153,14 +153,13 @@ describe("runAgent", () => {
     );
   });
 
-  it("stops after MAX_ITERATIONS (3) even if Claude keeps returning tool_use", async () => {
-    // Return tool_use 4 times — should stop at iteration 3
+  it("stops after MAX_ITERATIONS even if Claude keeps returning tool_use", async () => {
     mockMessagesCreate.mockResolvedValue(
       toolUseResponse("listFiles", { dirPath: "/workspace/repo" }),
     );
 
     const run = await runAgent(makeGoal(), makeCtx());
-    expect(mockMessagesCreate).toHaveBeenCalledTimes(3);
+    expect(mockMessagesCreate).toHaveBeenCalledTimes(10);
     expect(run.status).toBe("completed");
   });
 
@@ -184,6 +183,27 @@ describe("runAgent", () => {
     const run = await runAgent(makeGoal(), makeCtx());
     expect(run.status).toBe("failed");
     expect(run.error).toContain("API down");
+  });
+
+  it("appends error tool_result when non-gated tool throws", async () => {
+    mockMessagesCreate
+      .mockResolvedValueOnce(
+        toolUseResponse("readFile", { filePath: "/workspace/repo/src/index.ts" }),
+      )
+      .mockResolvedValueOnce(endTurnResponse());
+
+    const ctx = makeCtx();
+    ctx.sandbox.readFile.mockRejectedValueOnce(new Error("disk error"));
+
+    const run = await runAgent(makeGoal(), ctx);
+    expect(run.status).toBe("completed");
+    const secondCallMessages = mockMessagesCreate.mock.calls[1][0].messages;
+    const hasErrorResult = secondCallMessages.some(
+      (m: any) =>
+        Array.isArray(m.content) &&
+        m.content.some((c: any) => c.type === "tool_result" && c.content.includes("Error:")),
+    );
+    expect(hasErrorResult).toBe(true);
   });
 
   it("saves checkpoint with running status between iterations", async () => {

@@ -2,6 +2,7 @@ import { getSandbox } from "@cloudflare/sandbox";
 import { Octokit } from "@octokit/rest";
 import { runAgent } from "../agent/index";
 import { loadCheckpoint } from "../agent/checkpoint";
+import { cloneRepo } from "../lib/cloneRepo";
 import type { Goal, AgentRun, MessageParam } from "../types/agent";
 import type { Env } from "../types/env";
 
@@ -13,7 +14,7 @@ interface ResumeOpts {
 
 export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts = {}): Promise<AgentRun> {
   const sandboxId = `droid-${goal.repo.owner}-${goal.repo.name}-${Date.now()}`;
-  const sandbox = getSandbox(env.Sandbox as any, sandboxId);
+  const sandbox = getSandbox(env.Sandbox as Parameters<typeof getSandbox>[0], sandboxId);
   const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
 
   let existingRun: AgentRun | undefined;
@@ -28,6 +29,8 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
   }
 
   try {
+    await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, env.GITHUB_TOKEN);
+
     const ctx = {
       sandbox,
       octokit,
@@ -38,8 +41,7 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
     return existingRun
       ? await runAgent(goal, ctx, { existingRun })
       : await runAgent(goal, ctx);
-  } catch (error: any) {
-    console.error("Harness error:", error);
+  } catch (error) {
     return {
       runId: resumeOpts.existingRunId ?? crypto.randomUUID(),
       goal,
@@ -47,7 +49,7 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
       messages: [],
       iteration: 0,
       artifacts: [],
-      error: error.message,
+      error: (error as Error).message,
     };
   } finally {
     await sandbox.destroy();

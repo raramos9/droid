@@ -7,4 +7,6 @@ export interface Env {
   WEBHOOK_SECRET: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_KEY: string;
+  RESUME_API_KEY: string;
+  ENVIRONMENT?: string;
 }
