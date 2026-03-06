@@ -76,12 +76,34 @@ export default {
         return Response.json({ error: "Run is not paused" }, { status: 400 });
       }
 
+      // Find every tool_use in the last assistant turn that still needs a result.
+      // When the gate fires, partial results are not saved, so ALL tool_uses in
+      // that turn may be unresolved. We inject the provided result for the gated
+      // tool and a placeholder for the rest so Anthropic accepts the conversation.
+      const lastAssistant = [...checkpoint.messages].reverse().find((m) => m.role === "assistant");
+      const lastContent = Array.isArray(lastAssistant?.content) ? lastAssistant!.content : [];
+      const resolvedIds = new Set(
+        checkpoint.messages.flatMap((m) =>
+          m.role === "user" && Array.isArray(m.content)
+            ? (m.content as Array<{ type: string; tool_use_id?: string }>)
+                .filter((b) => b.type === "tool_result" && b.tool_use_id)
+                .map((b) => b.tool_use_id!)
+            : [],
+        ),
+      );
+      const unresolvedIds = (lastContent as Array<{ type: string; id?: string }>)
+        .filter((b) => b.type === "tool_use" && b.id && !resolvedIds.has(b.id))
+        .map((b) => b.id!);
+
+      const toolResults = unresolvedIds.map((id) => ({
+        type: "tool_result" as const,
+        tool_use_id: id,
+        content: id === toolUseId ? result : "Tool execution was interrupted; this action was not completed.",
+      }));
+
       const updatedMessages = [
         ...checkpoint.messages,
-        {
-          role: "user" as const,
-          content: [{ type: "tool_result" as const, tool_use_id: toolUseId, content: result }],
-        },
+        { role: "user" as const, content: toolResults },
       ] as import("./types/agent").MessageParam[];
 
       ctx.waitUntil(

@@ -228,4 +228,43 @@ describe("fetch handler — /resume", () => {
     expect(res.status).toBe(200);
     expect(ctx.waitUntil).toHaveBeenCalledOnce();
   });
+
+  it("injects tool_results for all unresolved tool_uses in the last assistant turn", async () => {
+    const multiToolCheckpoint = {
+      ...pausedCheckpoint,
+      messages: [
+        { role: "user", content: "goal" },
+        {
+          role: "assistant",
+          content: [
+            { type: "tool_use", id: "tu-before", name: "listFiles", input: {} },
+            { type: "tool_use", id: "tu-gated", name: "createIssue", input: {} },
+            { type: "tool_use", id: "tu-after", name: "readFile", input: {} },
+          ],
+        },
+      ],
+    };
+    vi.mocked(loadCheckpoint).mockResolvedValueOnce(multiToolCheckpoint as any);
+
+    const ctx = makeCtx();
+    await worker.fetch(
+      makeResumeRequest({ toolUseId: "tu-gated", result: "approved" }, authHeader),
+      env,
+      ctx,
+    );
+
+    const resumeCall = vi.mocked(runDroidAgent).mock.calls[0];
+    const injectedMessages = resumeCall[2]?.initialMessages!;
+    const lastMsg = injectedMessages[injectedMessages.length - 1];
+    const toolResults = lastMsg.content as Array<{ tool_use_id: string; content: string }>;
+
+    // All three unresolved ids must have a result
+    expect(toolResults).toHaveLength(3);
+    const gated = toolResults.find((r) => r.tool_use_id === "tu-gated")!;
+    const before = toolResults.find((r) => r.tool_use_id === "tu-before")!;
+    const after = toolResults.find((r) => r.tool_use_id === "tu-after")!;
+    expect(gated.content).toBe("approved");
+    expect(before.content).toContain("interrupted");
+    expect(after.content).toContain("interrupted");
+  });
 });
