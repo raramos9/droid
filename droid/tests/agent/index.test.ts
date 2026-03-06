@@ -153,14 +153,13 @@ describe("runAgent", () => {
     );
   });
 
-  it("stops after MAX_ITERATIONS (3) even if Claude keeps returning tool_use", async () => {
-    // Return tool_use 4 times — should stop at iteration 3
+  it("stops after MAX_ITERATIONS even if Claude keeps returning tool_use", async () => {
     mockMessagesCreate.mockResolvedValue(
       toolUseResponse("listFiles", { dirPath: "/workspace/repo" }),
     );
 
     const run = await runAgent(makeGoal(), makeCtx());
-    expect(mockMessagesCreate).toHaveBeenCalledTimes(3);
+    expect(mockMessagesCreate).toHaveBeenCalledTimes(10);
     expect(run.status).toBe("completed");
   });
 

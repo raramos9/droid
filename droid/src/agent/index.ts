@@ -5,7 +5,7 @@ import { buildAllTools, GatedActionError, type DroidTool } from "./tools/index";
 import { buildGoalMessage, SYSTEM_PROMPT } from "./prompt";
 import { saveCheckpoint, savePendingAction } from "./checkpoint";
 
-const MAX_ITERATIONS = 3;
+const MAX_ITERATIONS = 10;
 
 export interface AgentContext {
   sandbox: ToolContext["sandbox"];
