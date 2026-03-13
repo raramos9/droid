@@ -19,13 +19,15 @@ export async function GET(req: NextRequest) {
   const octokit = new Octokit({ auth: session.accessToken })
 
   try {
+    const login = session.login ?? (await octokit.users.getAuthenticated()).data.login
+
     if (!q) {
       const { data } = await octokit.repos.listForAuthenticatedUser({
         sort: "updated",
         per_page: 100,
         affiliation: "owner,organization_member",
       })
-      return NextResponse.json(data.filter((item) => isOwnerOrAdmin(item, session.login)))
+      return NextResponse.json(data.filter((item) => isOwnerOrAdmin(item, login)))
     }
 
     const { data } = await octokit.search.repos({
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest) {
       per_page: 20,
       sort: "updated",
     })
-    return NextResponse.json(data.items.filter((item) => isOwnerOrAdmin(item, session.login)))
+    return NextResponse.json(data.items.filter((item) => isOwnerOrAdmin(item, login)))
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return NextResponse.json({ error: message }, { status: 500 })

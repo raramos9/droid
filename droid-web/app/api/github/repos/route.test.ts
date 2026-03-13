@@ -10,10 +10,12 @@ jest.mock("@/auth", () => ({ auth: jest.fn() }))
 
 const mockSearchRepos = jest.fn()
 const mockListRepos = jest.fn()
+const mockGetAuthenticated = jest.fn()
 jest.mock("@octokit/rest", () => ({
   Octokit: jest.fn().mockImplementation(() => ({
     search: { repos: mockSearchRepos },
     repos: { listForAuthenticatedUser: mockListRepos },
+    users: { getAuthenticated: mockGetAuthenticated },
   })),
 }))
 
@@ -23,7 +25,10 @@ function makeGet(search = "") {
   return new NextRequest(`http://localhost/api/github/repos${search}`)
 }
 
-beforeEach(() => jest.clearAllMocks())
+beforeEach(() => {
+  jest.clearAllMocks()
+  mockGetAuthenticated.mockResolvedValue({ data: { login: "testuser" } })
+})
 
 describe("GET /api/github/repos", () => {
   it("returns 401 when unauthenticated", async () => {
@@ -77,6 +82,24 @@ describe("GET /api/github/repos", () => {
       expect(body.map((r: { full_name: string }) => r.full_name)).toEqual(
         expect.arrayContaining(["testuser/owned", "org/admin-repo"])
       )
+    })
+
+    it("falls back to getAuthenticated when session.login is missing", async () => {
+      auth.mockResolvedValue({ login: undefined, accessToken: "tok" })
+      mockGetAuthenticated.mockResolvedValue({ data: { login: "testuser" } })
+      mockListRepos.mockResolvedValue({
+        data: [
+          { full_name: "testuser/repo", owner: { login: "testuser" }, name: "repo", permissions: { admin: false } },
+          { full_name: "other/repo", owner: { login: "other" }, name: "repo", permissions: { admin: false } },
+        ],
+      })
+
+      const res = await GET(makeGet())
+      const body = await res.json()
+
+      expect(mockGetAuthenticated).toHaveBeenCalled()
+      expect(body).toHaveLength(1)
+      expect(body[0].full_name).toBe("testuser/repo")
     })
 
     it("returns 500 on GitHub error in default listing", async () => {
