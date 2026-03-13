@@ -21,6 +21,17 @@ export async function POST(req: NextRequest) {
   try {
     const octokit = new Octokit({ auth: session.accessToken })
 
+    const { data: repoData } = await octokit.repos.get({ owner, repo })
+    const isOwner = repoData.owner?.login === session.login
+    const isAdmin = (repoData.permissions as { admin?: boolean } | undefined)?.admin === true
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: "You do not have permission to enroll this repository" },
+        { status: 403 }
+      )
+    }
+
     const { data: webhook } = await octokit.repos.createWebhook({
       owner,
       repo,

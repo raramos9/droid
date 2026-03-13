@@ -30,23 +30,54 @@ describe("GET /api/github/repos", () => {
     expect(res.status).toBe(401)
   })
 
-  it("searches repos and returns items", async () => {
-    auth.mockResolvedValue({ user: { name: "testuser" }, accessToken: "tok" })
-    const items = [{ full_name: "acme/api", owner: { login: "acme" }, name: "api" }]
+  it("returns only repos owned by the user", async () => {
+    auth.mockResolvedValue({ login: "testuser", accessToken: "tok" })
+    const items = [
+      { full_name: "testuser/my-repo", owner: { login: "testuser" }, name: "my-repo", permissions: { admin: false } },
+      { full_name: "other/their-repo", owner: { login: "other" }, name: "their-repo", permissions: { admin: false } },
+    ]
     mockSearchRepos.mockResolvedValue({ data: { items } })
 
-    const res = await GET(makeGet("?q=api"))
+    const res = await GET(makeGet("?q=repo"))
     const body = await res.json()
 
-    expect(mockSearchRepos).toHaveBeenCalledWith(
-      expect.objectContaining({ q: expect.stringContaining("api") })
-    )
     expect(res.status).toBe(200)
-    expect(body).toEqual(items)
+    expect(body).toHaveLength(1)
+    expect(body[0].full_name).toBe("testuser/my-repo")
+  })
+
+  it("includes org repos where user has admin permissions", async () => {
+    auth.mockResolvedValue({ login: "testuser", accessToken: "tok" })
+    const items = [
+      { full_name: "myorg/repo", owner: { login: "myorg" }, name: "repo", permissions: { admin: true } },
+      { full_name: "other/repo2", owner: { login: "other" }, name: "repo2", permissions: { admin: false } },
+    ]
+    mockSearchRepos.mockResolvedValue({ data: { items } })
+
+    const res = await GET(makeGet("?q=repo"))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body).toHaveLength(1)
+    expect(body[0].full_name).toBe("myorg/repo")
+  })
+
+  it("returns empty array when no repos match ownership criteria", async () => {
+    auth.mockResolvedValue({ login: "testuser", accessToken: "tok" })
+    const items = [
+      { full_name: "other/repo", owner: { login: "other" }, name: "repo", permissions: { admin: false } },
+    ]
+    mockSearchRepos.mockResolvedValue({ data: { items } })
+
+    const res = await GET(makeGet("?q=repo"))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body).toHaveLength(0)
   })
 
   it("returns 500 on GitHub error", async () => {
-    auth.mockResolvedValue({ user: { name: "testuser" }, accessToken: "tok" })
+    auth.mockResolvedValue({ login: "testuser", accessToken: "tok" })
     mockSearchRepos.mockRejectedValue(new Error("API error"))
 
     const res = await GET(makeGet("?q=api"))

@@ -8,6 +8,7 @@ interface Repo {
   owner: { login: string }
   name: string
   private: boolean
+  permissions?: { admin: boolean }
 }
 
 interface Props {

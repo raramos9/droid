@@ -17,7 +17,12 @@ export async function GET(req: NextRequest) {
       per_page: 20,
       sort: "updated",
     })
-    return NextResponse.json(data.items)
+    const owned = data.items.filter(
+      (item) =>
+        item.owner?.login === session.login ||
+        (item.permissions as { admin?: boolean } | undefined)?.admin === true
+    )
+    return NextResponse.json(owned)
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return NextResponse.json({ error: message }, { status: 500 })
