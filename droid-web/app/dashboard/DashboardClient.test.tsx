@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { EnrollModal } from "./EnrollModal"
+import { DashboardClient } from "./DashboardClient"
 import type { EnrolledRepo } from "@/lib/types"
 
 const mockFetch = jest.fn()
@@ -9,8 +9,6 @@ const mockRefresh = jest.fn()
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
-
-const mockOnClose = jest.fn()
 
 const enrolledRepo: EnrolledRepo = {
   id: 1,
@@ -35,40 +33,19 @@ beforeEach(() => {
   jest.clearAllMocks()
 })
 
-describe("EnrollModal", () => {
-  it("renders search input and button", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
-    expect(screen.getByPlaceholderText(/search your repos/i)).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole("button", { name: /search/i })).toBeInTheDocument())
-  })
-
-  it("calls close handler when X is clicked", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
-    await waitFor(() => expect(screen.getByRole("button", { name: /search/i })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole("button", { name: /close/i }))
-    expect(mockOnClose).toHaveBeenCalledTimes(1)
-  })
-
-  it("close button has accessible aria-label", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
-    await waitFor(() => expect(screen.getByRole("button", { name: /close/i })).toHaveAttribute("aria-label", "Close"))
-  })
-
+describe("DashboardClient", () => {
   it("fetches default repo list on mount", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([makeRepo("my-repo")]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledWith("/api/github/repos"))
     await waitFor(() => expect(screen.getByText("testuser/my-repo")).toBeInTheDocument())
   })
 
-  it("shows visibility badge for each repo", async () => {
+  it("shows repo name, visibility badge, and last updated", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([
@@ -76,22 +53,27 @@ describe("EnrollModal", () => {
         makeRepo("private-repo", "testuser", true),
       ]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(screen.getByText("testuser/public-repo")).toBeInTheDocument())
     expect(screen.getByText("Public")).toBeInTheDocument()
     expect(screen.getByText("Private")).toBeInTheDocument()
+    expect(screen.getAllByText(/1\/15\/2024/i).length).toBeGreaterThan(0)
   })
 
-  it("shows Enrolled badge and no enroll button for enrolled repos", async () => {
+  it("shows Enrolled badge and View activity link for enrolled repos", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([makeRepo("enrolled-repo")]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[enrolledRepo]} />)
+    render(<DashboardClient enrolledRepos={[enrolledRepo]} />)
 
     await waitFor(() => expect(screen.getByText("testuser/enrolled-repo")).toBeInTheDocument())
     expect(screen.getByText("Enrolled")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /view activity/i })).toHaveAttribute(
+      "href",
+      "/dashboard/testuser/enrolled-repo"
+    )
     expect(screen.queryByRole("button", { name: /^enroll$/i })).toBeNull()
   })
 
@@ -100,40 +82,18 @@ describe("EnrollModal", () => {
       ok: true,
       json: () => Promise.resolve([makeRepo("new-repo")]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(screen.getByRole("button", { name: /^enroll$/i })).toBeInTheDocument())
+    expect(screen.queryByText("Enrolled")).toBeNull()
   })
 
-  it("shows pagination buttons when repos exceed 20", async () => {
-    const repos = Array.from({ length: 25 }, (_, i) => makeRepo(`repo-${i + 1}`))
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(repos) })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
-
-    await waitFor(() => expect(screen.getByText("testuser/repo-1")).toBeInTheDocument())
-    expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument()
-    expect(screen.queryByText("testuser/repo-21")).not.toBeInTheDocument()
-  })
-
-  it("navigates to page 2 and shows remaining repos", async () => {
-    const repos = Array.from({ length: 25 }, (_, i) => makeRepo(`repo-${i + 1}`))
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(repos) })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
-
-    await waitFor(() => expect(screen.getByText("testuser/repo-1")).toBeInTheDocument())
-    fireEvent.click(screen.getByRole("button", { name: "2" }))
-
-    expect(screen.getByText("testuser/repo-21")).toBeInTheDocument()
-    expect(screen.queryByText("testuser/repo-1")).not.toBeInTheDocument()
-  })
-
-  it("filters repos client-side when searching", async () => {
+  it("filters repos client-side on search without extra fetch", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([makeRepo("my-api"), makeRepo("my-frontend")]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(screen.getByText("testuser/my-api")).toBeInTheDocument())
 
@@ -150,7 +110,7 @@ describe("EnrollModal", () => {
       ok: true,
       json: () => Promise.resolve([makeRepo("my-api"), makeRepo("my-frontend")]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(screen.getByText("testuser/my-api")).toBeInTheDocument())
 
@@ -168,7 +128,7 @@ describe("EnrollModal", () => {
       ok: true,
       json: () => Promise.resolve([makeRepo("my-api"), makeRepo("my-frontend")]),
     })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(screen.getByText("testuser/my-api")).toBeInTheDocument())
 
@@ -180,7 +140,30 @@ describe("EnrollModal", () => {
     expect(screen.queryByText("testuser/my-frontend")).not.toBeInTheDocument()
   })
 
-  it("triggers enroll call and closes modal on success", async () => {
+  it("shows pagination buttons when repos exceed 20", async () => {
+    const repos = Array.from({ length: 25 }, (_, i) => makeRepo(`repo-${i + 1}`))
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(repos) })
+    render(<DashboardClient enrolledRepos={[]} />)
+
+    await waitFor(() => expect(screen.getByText("testuser/repo-1")).toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument()
+    expect(screen.queryByText("testuser/repo-21")).not.toBeInTheDocument()
+  })
+
+  it("navigates to page 2 and shows correct repos", async () => {
+    const repos = Array.from({ length: 25 }, (_, i) => makeRepo(`repo-${i + 1}`))
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(repos) })
+    render(<DashboardClient enrolledRepos={[]} />)
+
+    await waitFor(() => expect(screen.getByText("testuser/repo-1")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "2" }))
+
+    expect(screen.getByText("testuser/repo-21")).toBeInTheDocument()
+    expect(screen.queryByText("testuser/repo-1")).not.toBeInTheDocument()
+  })
+
+  it("triggers enroll and calls router.refresh() on success", async () => {
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -188,7 +171,7 @@ describe("EnrollModal", () => {
       })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ ok: true }) })
 
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
     await waitFor(() => screen.getByRole("button", { name: /^enroll$/i }))
 
     fireEvent.click(screen.getByRole("button", { name: /^enroll$/i }))
@@ -200,12 +183,11 @@ describe("EnrollModal", () => {
       expect.objectContaining({ method: "POST" })
     )
     expect(mockRefresh).toHaveBeenCalled()
-    expect(mockOnClose).toHaveBeenCalled()
   })
 
-  it("shows error when default list fetch fails", async () => {
+  it("shows error when fetch fails", async () => {
     mockFetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({}) })
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(screen.getByText(/failed to load/i)).toBeInTheDocument())
   })
@@ -221,7 +203,7 @@ describe("EnrollModal", () => {
         json: () => Promise.resolve({ error: "Already enrolled" }),
       })
 
-    render(<EnrollModal onClose={mockOnClose} enrolledRepos={[]} />)
+    render(<DashboardClient enrolledRepos={[]} />)
     await waitFor(() => screen.getByRole("button", { name: /^enroll$/i }))
 
     fireEvent.click(screen.getByRole("button", { name: /^enroll$/i }))
