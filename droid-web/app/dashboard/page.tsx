@@ -21,7 +21,7 @@ export default async function DashboardPage() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-zinc-900">Enrolled repositories</h2>
-          <DashboardClient />
+          <DashboardClient enrolledRepos={repos} />
         </div>
 
         {repos.length === 0 ? (

@@ -2,8 +2,13 @@
 
 import { useState } from "react"
 import { EnrollModal } from "@/components/EnrollModal"
+import type { EnrolledRepo } from "@/lib/types"
 
-export function DashboardClient() {
+interface Props {
+  enrolledRepos: EnrolledRepo[]
+}
+
+export function DashboardClient({ enrolledRepos }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -14,7 +19,7 @@ export function DashboardClient() {
       >
         Enroll repo
       </button>
-      {open && <EnrollModal onClose={() => setOpen(false)} />}
+      {open && <EnrollModal onClose={() => setOpen(false)} enrolledRepos={enrolledRepos} />}
     </>
   )
 }
