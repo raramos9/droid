@@ -4,6 +4,7 @@ import {
   getRunForIssue,
   getPendingActions,
   getRunsMapByIssueNumber,
+  getPendingActionsCount,
 } from "./queries"
 
 // Mock Supabase client
@@ -13,6 +14,8 @@ const mockOrder = jest.fn()
 const mockLimit = jest.fn()
 const mockSingle = jest.fn()
 const mockFilter = jest.fn()
+const mockOr = jest.fn()
+const mockIn = jest.fn()
 
 const chainMock = {
   select: mockSelect,
@@ -21,6 +24,8 @@ const chainMock = {
   limit: mockLimit,
   single: mockSingle,
   filter: mockFilter,
+  or: mockOr,
+  in: mockIn,
 }
 
 // each mock returns chainMock for chaining
@@ -32,6 +37,8 @@ beforeEach(() => {
   mockLimit.mockReturnValue(chainMock)
   mockSingle.mockReturnValue(chainMock)
   mockFilter.mockReturnValue(chainMock)
+  mockOr.mockReturnValue(chainMock)
+  mockIn.mockReturnValue(chainMock)
 })
 
 const mockFrom = jest.fn().mockReturnValue(chainMock)
@@ -184,7 +191,7 @@ describe("getRunsMapByIssueNumber", () => {
     expect(map.get(10)).toEqual(runs[0])
   })
 
-  it("keeps first run when multiple exist for same issue", async () => {
+  it("keeps first run when multiple exist for same issue (duplicate key guard)", async () => {
     const runs = [
       { run_id: "run-1", goal: { context: { issueNumber: 10 } }, status: "completed" },
       { run_id: "run-2", goal: { context: { issueNumber: 10 } }, status: "running" },
@@ -195,5 +202,80 @@ describe("getRunsMapByIssueNumber", () => {
 
     expect(map.size).toBe(1)
     expect(map.get(10)?.run_id).toBe("run-1")
+  })
+})
+
+describe("getPendingActionsCount", () => {
+  it("returns 0 when no enrolled repos", async () => {
+    mockEq.mockResolvedValueOnce({ data: [], error: null })
+
+    const result = await getPendingActionsCount("user123")
+
+    expect(result).toBe(0)
+  })
+
+  it("returns 0 when no runs for enrolled repos", async () => {
+    // Step 1: getEnrolledRepos
+    mockEq.mockResolvedValueOnce({
+      data: [{ owner: "acme", repo: "api" }],
+      error: null,
+    })
+    // Step 2: get run_ids
+    mockOr.mockResolvedValueOnce({ data: [], error: null })
+
+    const result = await getPendingActionsCount("user123")
+
+    expect(result).toBe(0)
+  })
+
+  it("returns count of pending actions across all enrolled repos", async () => {
+    // Step 1: getEnrolledRepos
+    mockEq.mockResolvedValueOnce({
+      data: [{ owner: "acme", repo: "api" }],
+      error: null,
+    })
+    // Step 2: get run_ids
+    mockOr.mockResolvedValueOnce({
+      data: [{ run_id: "run-1" }, { run_id: "run-2" }],
+      error: null,
+    })
+    // Step 3: count pending actions
+    mockEq.mockResolvedValueOnce({ count: 5, error: null })
+
+    const result = await getPendingActionsCount("user123")
+
+    expect(result).toBe(5)
+  })
+
+  it("returns 0 when count is null", async () => {
+    mockEq.mockResolvedValueOnce({
+      data: [{ owner: "acme", repo: "api" }],
+      error: null,
+    })
+    mockOr.mockResolvedValueOnce({
+      data: [{ run_id: "run-1" }],
+      error: null,
+    })
+    mockEq.mockResolvedValueOnce({ count: null, error: null })
+
+    const result = await getPendingActionsCount("user123")
+
+    expect(result).toBe(0)
+  })
+
+  it("throws when getEnrolledRepos fails", async () => {
+    mockEq.mockResolvedValueOnce({ data: null, error: { message: "DB error" } })
+
+    await expect(getPendingActionsCount("user123")).rejects.toThrow("DB error")
+  })
+
+  it("throws when fetching runs fails", async () => {
+    mockEq.mockResolvedValueOnce({
+      data: [{ owner: "acme", repo: "api" }],
+      error: null,
+    })
+    mockOr.mockResolvedValueOnce({ data: null, error: { message: "runs error" } })
+
+    await expect(getPendingActionsCount("user123")).rejects.toThrow("runs error")
   })
 })

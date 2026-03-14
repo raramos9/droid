@@ -61,6 +61,34 @@ export async function getRunForIssue(
   return data as AgentRun
 }
 
+export async function getPendingActionsCount(installedBy: string): Promise<number> {
+  const repos = await getEnrolledRepos(installedBy)
+  if (!repos.length) return 0
+
+  const orFilter = repos
+    .map((r) => `and(repo_owner.eq.${r.owner},repo_name.eq.${r.repo})`)
+    .join(",")
+
+  const { data: runs, error: runsError } = await supabase
+    .from("agent_runs")
+    .select("run_id")
+    .or(orFilter)
+
+  if (runsError) throw new Error(runsError.message)
+  if (!runs?.length) return 0
+
+  const runIds = runs.map((r) => r.run_id)
+
+  const { count, error: countError } = await supabase
+    .from("pending_actions")
+    .select("id", { count: "exact", head: true })
+    .in("run_id", runIds)
+    .eq("status", "pending")
+
+  if (countError) throw new Error(countError.message)
+  return count ?? 0
+}
+
 export async function getPendingActions(runId: string): Promise<PendingAction[]> {
   const { data, error } = await supabase
     .from("pending_actions")

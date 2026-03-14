@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { Sidebar } from "./Sidebar"
 
-// Mock useSidebarState so we control collapsed state in tests
 const mockToggle = jest.fn()
 const mockSetCollapsed = jest.fn()
 let mockCollapsed = false
@@ -14,12 +13,37 @@ jest.mock("@/lib/hooks/useSidebarState", () => ({
   }),
 }))
 
+// Mock sub-components so Sidebar tests stay focused on shell behavior
+jest.mock("./SidebarNav", () => ({
+  SidebarNav: ({ collapsed, repos, inboxCount }: { collapsed: boolean; repos: unknown[]; inboxCount: number }) => (
+    <div data-testid="sidebar-nav" data-collapsed={collapsed} data-count={inboxCount}>
+      {!collapsed && repos.map((r: unknown) => {
+        const repo = r as { repo: string }
+        return <span key={repo.repo}>{repo.repo}</span>
+      })}
+    </div>
+  ),
+}))
+
+jest.mock("./SidebarUserMenu", () => ({
+  SidebarUserMenu: ({ user, collapsed }: { user: { name?: string | null }; collapsed: boolean }) => (
+    <div data-testid="sidebar-user">
+      {!collapsed && <span>{user.name}</span>}
+    </div>
+  ),
+}))
+
+jest.mock("./SidebarKeyboardHints", () => ({
+  SidebarKeyboardHints: () => <div data-testid="sidebar-hints" />,
+}))
+
 const defaultProps = {
   user: { name: "testuser", email: "test@example.com", image: null },
   repos: [
     { owner: "acme", repo: "frontend" },
     { owner: "acme", repo: "backend" },
   ],
+  inboxCount: 0,
 }
 
 describe("Sidebar", () => {
@@ -63,26 +87,46 @@ describe("Sidebar", () => {
     expect(aside).toHaveStyle({ width: "var(--sidebar-width)" })
   })
 
-  it("hides repo names when collapsed", () => {
-    mockCollapsed = true
+  it("renders SidebarNav with collapsed state", () => {
     render(<Sidebar {...defaultProps} />)
-    expect(screen.queryByText("frontend")).not.toBeInTheDocument()
+    expect(screen.getByTestId("sidebar-nav")).toHaveAttribute("data-collapsed", "false")
   })
 
-  it("shows repo names when expanded", () => {
+  it("renders SidebarNav with collapsed=true when sidebar is collapsed", () => {
+    mockCollapsed = true
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByTestId("sidebar-nav")).toHaveAttribute("data-collapsed", "true")
+  })
+
+  it("renders keyboard hints when expanded", () => {
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByTestId("sidebar-hints")).toBeInTheDocument()
+  })
+
+  it("hides keyboard hints when collapsed", () => {
+    mockCollapsed = true
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.queryByTestId("sidebar-hints")).not.toBeInTheDocument()
+  })
+
+  it("passes inboxCount to SidebarNav", () => {
+    render(<Sidebar {...defaultProps} inboxCount={5} />)
+    expect(screen.getByTestId("sidebar-nav")).toHaveAttribute("data-count", "5")
+  })
+
+  it("shows repo names via SidebarNav when expanded", () => {
     render(<Sidebar {...defaultProps} />)
     expect(screen.getByText("frontend")).toBeInTheDocument()
     expect(screen.getByText("backend")).toBeInTheDocument()
   })
 
-  it("shows username when expanded", () => {
+  it("renders SidebarUserMenu", () => {
     render(<Sidebar {...defaultProps} />)
-    expect(screen.getByText("testuser")).toBeInTheDocument()
+    expect(screen.getByTestId("sidebar-user")).toBeInTheDocument()
   })
 
-  it("hides username text when collapsed", () => {
-    mockCollapsed = true
+  it("shows username via SidebarUserMenu when expanded", () => {
     render(<Sidebar {...defaultProps} />)
-    expect(screen.queryByText("testuser")).not.toBeInTheDocument()
+    expect(screen.getByText("testuser")).toBeInTheDocument()
   })
 })
