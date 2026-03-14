@@ -32,9 +32,7 @@ export default async function RepoDetailPage({ params }: Props) {
         style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
       >
         <nav className="font-data text-xs flex items-center gap-2" style={{ color: "var(--text-ter)" }}>
-          <Link href="/dashboard" className="transition-colors" style={{ color: "var(--text-sec)" }}
-            onMouseEnter={() => {}} // hover handled via CSS
-          >
+          <Link href="/dashboard" className="transition-colors" style={{ color: "var(--text-sec)" }}>
             droid
           </Link>
           <span style={{ color: "var(--accent)" }}>&gt;</span>
