@@ -84,7 +84,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 8: Tab Layout and Page Refactor
+## ~~Phase 8: Tab Layout and Page Refactor~~
 
 22. Tests + implement `RepoTabs` — client component, `useSearchParams` for `?tab=issues`/`?tab=prs`, fetches issues/PRs via API routes, cross-references runsMap, identifies droid-created PRs via `pr.user.login === droidBotUsername`
 23. Refactor `app/dashboard/[owner]/[repo]/page.tsx` — keep server component, build runsMap, render `<RepoTabs />`, remove old table

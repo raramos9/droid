@@ -213,8 +213,11 @@ Lists enrolled repos from Supabase alongside the user's GitHub repos. Features:
 - Enroll action: calls `POST /api/enroll` to create GitHub webhook + DB record
 - Enrolled state: amber left border, "ENROLLED" tag, "View activity →" link
 
-#### `/dashboard/[owner]/[repo]` — Repo Detail
-Lists agent runs grouped by issue number. Shows issue title, run status badge, last updated date. Links to issue detail pages.
+#### `/dashboard/[owner]/[repo]` — Repo Detail (Repo Hub)
+Server component fetches runs from Supabase, builds `runsMap` (keyed by issueNumber), renders `<RepoTabs>` client component. Tabbed interface with Issues and PRs tabs.
+
+#### `RepoTabs`
+Client component with `useSearchParams` for `?tab=issues`/`?tab=prs`. Fetches GitHub issues/PRs via API routes, cross-references with runsMap, identifies droid-created PRs via `pr.user.login === "getdroid[bot]"`. Renders IssueCard/PrCard per item.
 
 #### `/dashboard/[owner]/[repo]/issues/[number]` — Issue Detail
 Shows full run state for an issue: status, iteration count, activity log (agent text blocks), and pending action panel if a gated action is waiting.
