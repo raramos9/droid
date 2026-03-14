@@ -37,7 +37,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 3: Dispatch Route + Worker Endpoint
+## ~~Phase 3: Dispatch Route + Worker Endpoint~~
 
 10. Tests for `POST /api/dispatch` — 401, 400 missing/invalid fields, proxies to worker, handles worker errors
 11. Implement `POST /api/dispatch` — parse `{ owner, repo, type, issueNumber?, prNumber? }`, POST to `${DROID_WORKER_URL}/dispatch` with Bearer auth

@@ -95,6 +95,10 @@ Supported events: `push`, `pull_request` (opened/reopened), `issues` (opened), `
 
 Dev bypass: if `ENVIRONMENT=development` and header `x-dev-bypass: true` is set, signature check is skipped.
 
+#### `POST /dispatch`
+
+On-demand agent trigger from the dashboard. Requires `Authorization: Bearer <RESUME_API_KEY>`. Accepts `{ owner, repo, type, issueNumber?, prNumber? }`. Constructs a `Goal` and fires `runDroidAgent` in `ctx.waitUntil`.
+
 #### `POST /resume/:runId`
 
 Called by the dashboard after a user approves or rejects a gated action. Requires `Authorization: Bearer <RESUME_API_KEY>`.
@@ -241,6 +245,9 @@ Requires session. Validates owner/repo. Verifies user is repo owner or admin via
 
 #### `POST /api/resume`
 Requires session. Proxies to `{DROID_WORKER_URL}/resume/:runId` with `Authorization: Bearer {DROID_RESUME_API_KEY}`. Passes `{ toolUseId, result }` from request body.
+
+#### `POST /api/dispatch`
+Requires session. Proxies to `{DROID_WORKER_URL}/dispatch` with Bearer auth. Body: `{ owner, repo, type, issueNumber?, prNumber? }`.
 
 #### `GET /api/github/repos`
 Requires session. Searches user repos via `octokit.search.repos` scoped to `user:{login}`. Returns `{ repos: GithubRepo[] }`.

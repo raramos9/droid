@@ -25,6 +25,7 @@ export default {
         return Response.json({ error: "Invalid signature" }, { status: 401 });
       }
 
+      
       let rawPayload: unknown;
       try {
         rawPayload = contentType.includes("application/json")
@@ -45,8 +46,48 @@ export default {
         return Response.json({ message: "Event ignored" });
       }
 
-      ctx.waitUntil(runDroidAgent(goal, env).catch(() => {}));
+      ctx.waitUntil(runDroidAgent(goal, env).catch((err) => console.error("runDroidAgent failed:", err)));
       return Response.json({ message: `Droid started for ${goal.type}` });
+    }
+
+    // ── Dispatch (on-demand agent trigger from dashboard) ────────────────────
+    if (url.pathname === "/dispatch" && request.method === "POST") {
+      const authHeader = request.headers.get("authorization");
+      if (authHeader !== `Bearer ${env.RESUME_API_KEY}`) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      let body: { owner?: unknown; repo?: unknown; type?: unknown; issueNumber?: unknown; prNumber?: unknown };
+      try {
+        body = await request.json() as typeof body;
+      } catch {
+        return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
+
+      const { owner, repo, type, issueNumber, prNumber } = body;
+      if (typeof owner !== "string" || typeof repo !== "string") {
+        return Response.json({ error: "owner and repo are required strings" }, { status: 400 });
+      }
+      if (type !== "issue" && type !== "pr") {
+        return Response.json({ error: "type must be 'issue' or 'pr'" }, { status: 400 });
+      }
+
+      const repoObj = { owner, name: repo };
+      let goal: import("./types/agent").Goal;
+      if (type === "issue") {
+        if (typeof issueNumber !== "number") {
+          return Response.json({ error: "issueNumber required for issue dispatch" }, { status: 400 });
+        }
+        goal = { type: "issue_created", repo: repoObj, context: { issueNumber, title: "Dispatched from dashboard", body: "" } };
+      } else {
+        if (typeof prNumber !== "number") {
+          return Response.json({ error: "prNumber required for pr dispatch" }, { status: 400 });
+        }
+        goal = { type: "pull_request", repo: repoObj, context: { prNumber, title: "Dispatched from dashboard" } };
+      }
+
+      ctx.waitUntil(runDroidAgent(goal, env).catch((err) => console.error("dispatch runDroidAgent failed:", err)));
+      return Response.json({ message: "Droid dispatched" });
     }
 
     // ── Resume (called by dashboard after action approval) ───────────────────
