@@ -245,6 +245,15 @@ Requires session. Proxies to `{DROID_WORKER_URL}/resume/:runId` with `Authorizat
 #### `GET /api/github/repos`
 Requires session. Searches user repos via `octokit.search.repos` scoped to `user:{login}`. Returns `{ repos: GithubRepo[] }`.
 
+#### `GET /api/github/issues`
+Requires session. Params: `owner`, `repo`. Fetches open issues via `octokit.issues.listForRepo`, filters out items with `pull_request` property.
+
+#### `GET /api/github/prs`
+Requires session. Params: `owner`, `repo`. Fetches open PRs via `octokit.pulls.list`.
+
+#### `GET /api/github/prs/[number]/files`
+Requires session. Params: `owner`, `repo`, `number` (path param). Fetches PR files via `octokit.pulls.listFiles`.
+
 ### Queries (`lib/queries.ts`)
 
 | Function | Table | Notes |

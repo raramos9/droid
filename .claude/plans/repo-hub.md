@@ -24,7 +24,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 2: GitHub API Routes
+## ~~Phase 2: GitHub API Routes~~
 
 4. Tests for `GET /api/github/issues` — 401, returns issues (PRs filtered out), 400 missing params, 500 error
 5. Implement `GET /api/github/issues` — `octokit.issues.listForRepo({ state: "open", per_page: 30 })`, filter `!item.pull_request`
