@@ -25,12 +25,7 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
       await fetch("/api/dispatch", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          owner,
-          repo,
-          type: "pr",
-          prNumber: pr.number,
-        }),
+        body: JSON.stringify({ owner, repo, type: "pr", prNumber: pr.number }),
       })
       setDispatchState("done")
     } catch {
@@ -54,9 +49,9 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
         return
       }
       setMergeState("done")
-    } catch {
+    } catch (err) {
       setMergeState("error")
-      setMergeError("Network error")
+      setMergeError(err instanceof Error ? err.message : "Network error")
     }
   }
 
@@ -67,11 +62,8 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
     }
     if (files === null) {
       try {
-        const res = await fetch(
-          `/api/github/prs/${pr.number}/files?owner=${owner}&repo=${repo}`
-        )
-        const data = await res.json()
-        setFiles(data)
+        const res = await fetch(`/api/github/prs/${pr.number}/files?owner=${owner}&repo=${repo}`)
+        setFiles(await res.json())
       } catch {
         setFiles([])
       }
@@ -80,91 +72,126 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
   }
 
   return (
-    <div
-      className="py-4 space-y-3"
-      style={{ borderBottom: "1px solid var(--border)" }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span className="font-mono text-xs" style={{ color: "var(--text-tertiary)" }}>
-            #{pr.number}
-          </span>{" "}
-          <span className="text-sm font-medium" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
-            {pr.title}
-          </span>
-        </div>
-      </div>
-
-      <div className="text-xs" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
-        {pr.head.ref} → {pr.base.ref} on{" "}
-        {new Date(pr.created_at).toLocaleDateString()}
-      </div>
-
-      {isDroidCreated && (
+    <div style={{ borderBottom: "1px solid var(--border)" }}>
+      {/* Compact header row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          minHeight: 38,
+        }}
+      >
         <span
-          className="badge"
           style={{
-            background: "var(--status-info-bg)",
-            color: "var(--status-info)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.7rem",
+            color: "var(--text-tertiary)",
+            flexShrink: 0,
+            minWidth: 32,
           }}
         >
-          Droid created
+          #{pr.number}
         </span>
-      )}
-
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={handleShowFiles}
-          className="btn-secondary text-xs px-3 py-1"
+        <span
+          style={{
+            flex: 1,
+            fontSize: "0.8rem",
+            fontWeight: 500,
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
         >
-          {showFiles ? "Hide files" : "Show files"}
-        </button>
-
-        <button
-          onClick={handleDispatch}
-          disabled={dispatchState !== "idle"}
-          className="btn-secondary text-xs px-3 py-1"
+          {pr.title}
+        </span>
+        {isDroidCreated && (
+          <span
+            className="badge"
+            style={{ background: "var(--status-info-bg)", color: "var(--status-info)", flexShrink: 0 }}
+          >
+            Droid created
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: "0.7rem",
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-mono)",
+            flexShrink: 0,
+          }}
         >
-          {dispatchState === "idle" && "Dispatch droid"}
-          {dispatchState === "loading" && "Dispatching..."}
-          {dispatchState === "done" && "Dispatched"}
-        </button>
-
-        <button
-          onClick={handleMerge}
-          disabled={mergeState !== "idle"}
-          className="btn-success text-xs px-3 py-1"
-        >
-          {mergeState === "idle" && "Merge"}
-          {mergeState === "loading" && "Merging..."}
-          {mergeState === "done" && "Merged"}
-          {mergeState === "error" && "Merge failed"}
-        </button>
+          {new Date(pr.created_at).toLocaleDateString()}
+        </span>
       </div>
 
-      {mergeError && (
-        <p className="text-xs" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
-          {mergeError}
+      {/* Detail section */}
+      <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--font-mono)",
+            margin: 0,
+          }}
+        >
+          {pr.head.ref} → {pr.base.ref} on{" "}
+          {new Date(pr.created_at).toLocaleDateString()}
         </p>
-      )}
 
-      {showFiles && files && (
-        <div className="space-y-2">
-          {files.map((file) => (
-            <FileDiff key={file.filename} file={file} />
-          ))}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button
+            onClick={handleShowFiles}
+            className="btn-secondary"
+            style={{ padding: "3px 10px", fontSize: "0.75rem" }}
+          >
+            {showFiles ? "Hide files" : "Show files"}
+          </button>
+          <button
+            onClick={handleDispatch}
+            disabled={dispatchState !== "idle"}
+            className="btn-secondary"
+            style={{ padding: "3px 10px", fontSize: "0.75rem" }}
+          >
+            {dispatchState === "idle" && "Dispatch droid"}
+            {dispatchState === "loading" && "Dispatching..."}
+            {dispatchState === "done" && "Dispatched"}
+          </button>
+          <button
+            onClick={handleMerge}
+            disabled={mergeState !== "idle"}
+            className="btn-success"
+            style={{ padding: "3px 10px", fontSize: "0.75rem" }}
+          >
+            {mergeState === "idle" && "Merge"}
+            {mergeState === "loading" && "Merging..."}
+            {mergeState === "done" && "Merged"}
+            {mergeState === "error" && "Merge failed"}
+          </button>
         </div>
-      )}
 
-      <InlineChat
-        context={{
-          type: "pr",
-          number: pr.number,
-          owner,
-          repo,
-          summary: pr.title,
-        }}
-      />
+        {mergeError && (
+          <p style={{ fontSize: "0.75rem", color: "var(--status-error)", fontFamily: "var(--font-sans)", margin: 0 }}>
+            {mergeError}
+          </p>
+        )}
+
+        {showFiles && files && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {files.map((file) => (
+              <FileDiff key={file.filename} file={file} />
+            ))}
+          </div>
+        )}
+
+        <InlineChat
+          context={{ type: "pr", number: pr.number, owner, repo, summary: pr.title }}
+        />
+      </div>
     </div>
   )
 }

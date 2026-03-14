@@ -20,13 +20,9 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
   useEffect(() => {
     if (!run) return
     fetch(`/api/github/issues/${issue.number}/comments?owner=${owner}&repo=${repo}`)
-      .then((res) => res.ok ? res.json() : [])
+      .then((res) => (res.ok ? res.json() : []))
       .then((comments: Array<{ body: string }>) => {
-        if (comments.length > 0) {
-          setDroidComment(comments[0].body)
-        } else {
-          setDroidComment("")
-        }
+        setDroidComment(comments.length > 0 ? comments[0].body : "")
       })
       .catch(() => setDroidComment(""))
   }, [run, issue.number, owner, repo])
@@ -37,12 +33,7 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
       await fetch("/api/dispatch", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          owner,
-          repo,
-          type: "issue",
-          issueNumber: issue.number,
-        }),
+        body: JSON.stringify({ owner, repo, type: "issue", issueNumber: issue.number }),
       })
       setDispatchState("done")
     } catch {
@@ -51,87 +42,132 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
   }
 
   return (
-    <div
-      className="py-4 space-y-3"
-      style={{ borderBottom: "1px solid var(--border)" }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span className="font-mono text-xs" style={{ color: "var(--text-tertiary)" }}>
-            #{issue.number}
-          </span>{" "}
-          <span className="text-sm font-medium" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
-            {issue.title}
-          </span>
-        </div>
-      </div>
-
-      <div className="text-xs" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
-        opened by {issue.user.login} on{" "}
-        {new Date(issue.created_at).toLocaleDateString()}
-      </div>
-
-      {run && (
+    <div style={{ borderBottom: "1px solid var(--border)" }}>
+      {/* Compact header row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          minHeight: 38,
+        }}
+      >
         <span
-          className="badge"
           style={{
-            background: "var(--status-success-bg)",
-            color: "var(--status-success)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.7rem",
+            color: "var(--text-tertiary)",
+            flexShrink: 0,
+            minWidth: 32,
           }}
         >
-          Droid responded
+          #{issue.number}
         </span>
-      )}
-
-      {run && <ThinkingToggle messages={run.messages} />}
-
-      {droidComment && (
-        <div>
-          <p
-            className="text-sm italic"
-            style={{
-              color: "var(--text-secondary)",
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: showFullComment ? undefined : 3,
-              WebkitBoxOrient: "vertical",
-            }}
-          >
-            {droidComment}
-          </p>
-          {droidComment.split("\n").length > 3 && !showFullComment && (
-            <button
-              onClick={() => setShowFullComment(true)}
-              className="text-xs mt-1"
-              style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)" }}
-            >
-              Show more
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <button
-          onClick={handleDispatch}
-          disabled={dispatchState !== "idle"}
-          className="btn-secondary text-xs px-3 py-1"
+        <span
+          style={{
+            flex: 1,
+            fontSize: "0.8rem",
+            fontWeight: 500,
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
         >
-          {dispatchState === "idle" && "Dispatch droid"}
-          {dispatchState === "loading" && "Dispatching..."}
-          {dispatchState === "done" && "Dispatched"}
-        </button>
+          {issue.title}
+        </span>
+        {run && (
+          <span
+            className="badge"
+            style={{ background: "var(--status-success-bg)", color: "var(--status-success)", flexShrink: 0 }}
+          >
+            Droid responded
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: "0.7rem",
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-mono)",
+            flexShrink: 0,
+          }}
+        >
+          {new Date(issue.created_at).toLocaleDateString()}
+        </span>
       </div>
 
-      <InlineChat
-        context={{
-          type: "issue",
-          number: issue.number,
-          owner,
-          repo,
-          summary: issue.title,
-        }}
-      />
+      {/* Detail section */}
+      <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-sans)",
+            margin: 0,
+          }}
+        >
+          opened by {issue.user.login} on{" "}
+          {new Date(issue.created_at).toLocaleDateString()}
+        </p>
+
+        {run && <ThinkingToggle messages={run.messages} />}
+
+        {droidComment && (
+          <div>
+            <p
+              style={{
+                fontSize: "0.8rem",
+                fontStyle: "italic",
+                color: "var(--text-secondary)",
+                fontFamily: "var(--font-sans)",
+                margin: 0,
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: showFullComment ? undefined : 3,
+                WebkitBoxOrient: "vertical",
+              }}
+            >
+              {droidComment}
+            </p>
+            {droidComment.split("\n").length > 3 && !showFullComment && (
+              <button
+                onClick={() => setShowFullComment(true)}
+                style={{
+                  fontSize: "0.7rem",
+                  marginTop: 2,
+                  color: "var(--text-secondary)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-sans)",
+                  padding: 0,
+                }}
+              >
+                Show more
+              </button>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={handleDispatch}
+            disabled={dispatchState !== "idle"}
+            className="btn-secondary"
+            style={{ padding: "3px 10px", fontSize: "0.75rem" }}
+          >
+            {dispatchState === "idle" && "Dispatch droid"}
+            {dispatchState === "loading" && "Dispatching..."}
+            {dispatchState === "done" && "Dispatched"}
+          </button>
+        </div>
+
+        <InlineChat
+          context={{ type: "issue", number: issue.number, owner, repo, summary: issue.title }}
+        />
+      </div>
     </div>
   )
 }

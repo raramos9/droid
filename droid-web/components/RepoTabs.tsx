@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import type { AgentRun, GitHubIssue, GitHubPR } from "@/lib/types"
 import { IssueCard } from "./IssueCard"
 import { PrCard } from "./PrCard"
+import { useKeyboardNavigation } from "@/lib/hooks/useKeyboardNavigation"
 
 const DROID_BOT_USERNAME = "getdroid[bot]"
 
@@ -74,21 +75,46 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
     router.push(`${pathname}?${params.toString()}`)
   }
 
+  const issueItems = issues ?? []
+  const prItems = prs ?? []
+
+  const { selectedIndex: issueSelectedIndex } = useKeyboardNavigation({
+    items: issueItems,
+    onSelect: (issue) => {
+      router.push(`/dashboard/${owner}/${repo}/issues/${issue.number}`)
+    },
+  })
+
+  const { selectedIndex: prSelectedIndex } = useKeyboardNavigation({
+    items: prItems,
+    onSelect: (pr) => {
+      router.push(`/dashboard/${owner}/${repo}/issues/${pr.number}`)
+    },
+  })
+
   return (
     <div>
-      <div className="flex gap-0 mb-6" style={{ borderBottom: "1px solid var(--border)" }}>
-        {["issues", "prs"].map((tab) => (
+      {/* Tab bar */}
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 0 }}>
+        {(["issues", "prs"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => switchTab(tab)}
-            className="text-sm px-4 py-2"
             style={{
+              padding: "8px 16px",
+              fontSize: "0.8rem",
               color: activeTab === tab ? "var(--text-primary)" : "var(--text-tertiary)",
-              borderBottom: activeTab === tab ? "2px solid var(--text-primary)" : "2px solid transparent",
+              borderBottom: activeTab === tab
+                ? "2px solid var(--text-primary)"
+                : "2px solid transparent",
               background: "transparent",
               fontFamily: "var(--font-sans)",
               fontWeight: activeTab === tab ? 500 : 400,
-              textTransform: "capitalize",
+              cursor: "pointer",
+              border: "none",
+              borderBottom: activeTab === tab
+                ? "2px solid var(--text-primary)"
+                : "2px solid transparent",
             }}
           >
             {tab === "prs" ? "Pull Requests" : "Issues"}
@@ -96,60 +122,78 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
         ))}
       </div>
 
+      {/* Issues tab */}
       {activeTab === "issues" && (
-        <div className="space-y-0">
+        <div>
           {issuesLoading && (
-            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               Loading issues...
             </p>
           )}
           {issuesError && (
-            <p className="text-sm" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--status-error)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               {issuesError}
             </p>
           )}
           {!issuesLoading && !issuesError && issues && issues.length === 0 && (
-            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               No open issues
             </p>
           )}
-          {issues?.map((issue) => (
-            <IssueCard
+          {issueItems.map((issue, i) => (
+            <div
               key={issue.number}
-              issue={issue}
-              run={runsMap[issue.number.toString()] ?? null}
-              owner={owner}
-              repo={repo}
-            />
+              style={{
+                background: issueSelectedIndex === i ? "var(--selection-bg)" : "transparent",
+                borderLeft: issueSelectedIndex === i ? "2px solid var(--border-strong)" : "2px solid transparent",
+                transition: "background var(--transition)",
+              }}
+            >
+              <IssueCard
+                issue={issue}
+                run={runsMap[issue.number.toString()] ?? null}
+                owner={owner}
+                repo={repo}
+              />
+            </div>
           ))}
         </div>
       )}
 
+      {/* PRs tab */}
       {activeTab === "prs" && (
-        <div className="space-y-0">
+        <div>
           {prsLoading && (
-            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               Loading pull requests...
             </p>
           )}
           {prsError && (
-            <p className="text-sm" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--status-error)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               {prsError}
             </p>
           )}
           {!prsLoading && !prsError && prs && prs.length === 0 && (
-            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               No open pull requests
             </p>
           )}
-          {prs?.map((pr) => (
-            <PrCard
+          {prItems.map((pr, i) => (
+            <div
               key={pr.number}
-              pr={pr}
-              isDroidCreated={pr.user.login === DROID_BOT_USERNAME}
-              owner={owner}
-              repo={repo}
-            />
+              style={{
+                background: prSelectedIndex === i ? "var(--selection-bg)" : "transparent",
+                borderLeft: prSelectedIndex === i ? "2px solid var(--border-strong)" : "2px solid transparent",
+                transition: "background var(--transition)",
+              }}
+            >
+              <PrCard
+                pr={pr}
+                isDroidCreated={pr.user.login === DROID_BOT_USERNAME}
+                owner={owner}
+                repo={repo}
+              />
+            </div>
           ))}
         </div>
       )}
