@@ -116,41 +116,54 @@ export function DashboardClient({ enrolledRepos }: Props) {
       )}
 
       {pagedRepos.length > 0 && (
-        <ul style={{ border: "1px solid var(--border)" }}>
-          {pagedRepos.map((repo, i) => {
+        <div className="grid grid-cols-1 gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
+          {pagedRepos.map((repo) => {
             const enrolled = enrolledSet.has(repo.full_name)
             return (
-              <li
+              <div
                 key={repo.full_name}
-                className="flex items-center gap-3 px-3 py-2.5 transition-colors"
+                className="flex flex-col justify-between p-4 transition-colors"
                 style={{
-                  background: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
-                  borderBottom: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderLeft: enrolled ? "3px solid var(--accent)" : "1px solid var(--border)",
                 }}
               >
-                <span className="flex-1 font-data text-sm truncate" style={{ color: "var(--text-pri)" }}>
-                  {repo.full_name}
-                </span>
-                <span
-                  className="font-data text-xs px-1.5 py-0.5"
-                  style={{
-                    color: repo.private ? "var(--text-ter)" : "var(--blue)",
-                    border: `1px solid ${repo.private ? "var(--border)" : "var(--blue)"}`,
-                  }}
-                >
-                  {repo.private ? "Private" : "Public"}
-                </span>
-                <span className="font-data text-xs w-24 text-right shrink-0" style={{ color: "var(--text-ter)" }}>
-                  {repo.pushed_at ? new Date(repo.pushed_at).toLocaleDateString() : "—"}
-                </span>
+                {/* Repo name */}
+                <div className="mb-3">
+                  <p className="font-data text-sm leading-snug" style={{ color: "var(--text-ter)" }}>
+                    {repo.owner.login}
+                  </p>
+                  <p className="font-data text-base font-medium leading-tight" style={{ color: "var(--text-pri)" }}>
+                    {repo.full_name}
+                  </p>
+                </div>
+
+                {/* Meta row */}
+                <div className="flex items-center justify-between mb-3">
+                  <span
+                    className="font-data text-xs px-1.5 py-0.5"
+                    style={{
+                      color: repo.private ? "var(--text-ter)" : "var(--blue)",
+                      border: `1px solid ${repo.private ? "var(--border)" : "var(--blue)"}`,
+                    }}
+                  >
+                    {repo.private ? "Private" : "Public"}
+                  </span>
+                  <span className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
+                    {repo.pushed_at ? new Date(repo.pushed_at).toLocaleDateString() : "—"}
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <div style={{ borderTop: "1px solid var(--border)", marginBottom: "12px" }} />
+
+                {/* Action row */}
                 {enrolled ? (
-                  <>
+                  <div className="flex items-center justify-between">
                     <span
-                      className="font-data text-xs px-2 py-0.5"
-                      style={{
-                        color: "var(--green)",
-                        border: "1px solid var(--green)",
-                      }}
+                      className="font-data text-xs px-2 py-0.5 uppercase tracking-wider"
+                      style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)" }}
                     >
                       Enrolled
                     </span>
@@ -161,37 +174,39 @@ export function DashboardClient({ enrolledRepos }: Props) {
                     >
                       View activity →
                     </Link>
-                  </>
+                  </div>
                 ) : (
-                  <button
-                    onClick={() => enroll(repo)}
-                    disabled={enrolling === repo.full_name}
-                    className="font-data text-xs px-3 py-1 uppercase tracking-wider transition-all disabled:opacity-40"
-                    style={{
-                      color: "var(--accent)",
-                      border: "1px solid var(--accent-dim)",
-                      background: "transparent",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (enrolling !== repo.full_name) {
-                        e.currentTarget.style.background = "var(--accent)"
-                        e.currentTarget.style.color = "var(--bg)"
-                        e.currentTarget.style.borderColor = "var(--accent)"
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent"
-                      e.currentTarget.style.color = "var(--accent)"
-                      e.currentTarget.style.borderColor = "var(--accent-dim)"
-                    }}
-                  >
-                    {enrolling === repo.full_name ? "Enrolling..." : "Enroll"}
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => enroll(repo)}
+                      disabled={enrolling === repo.full_name}
+                      className="font-data text-xs px-3 py-1 uppercase tracking-wider transition-all disabled:opacity-40"
+                      style={{
+                        color: "var(--accent)",
+                        border: "1px solid var(--accent-dim)",
+                        background: "transparent",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (enrolling !== repo.full_name) {
+                          e.currentTarget.style.background = "var(--accent)"
+                          e.currentTarget.style.color = "var(--bg)"
+                          e.currentTarget.style.borderColor = "var(--accent)"
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent"
+                        e.currentTarget.style.color = "var(--accent)"
+                        e.currentTarget.style.borderColor = "var(--accent-dim)"
+                      }}
+                    >
+                      {enrolling === repo.full_name ? "Enrolling..." : "Enroll"}
+                    </button>
+                  </div>
                 )}
-              </li>
+              </div>
             )
           })}
-        </ul>
+        </div>
       )}
 
       {totalPages > 1 && (
