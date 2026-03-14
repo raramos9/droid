@@ -65,7 +65,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 6: Presentational Components
+## ~~Phase 6: Presentational Components~~
 
 17. Tests + implement `ThinkingToggle` — collapsed "Show thinking (N steps)" / expanded ActivityLog-style rendering
 18. Tests + implement `FileDiff` — filename, +/- stats, patch with line coloring (`+` green, `-` red, `@@` accent), truncate >200 lines

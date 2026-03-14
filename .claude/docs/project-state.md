@@ -238,6 +238,15 @@ Shown when a run is paused on a gated action. Displays tool name, args as JSON, 
 #### `EnrollModal`
 Search GitHub repos and enroll them. Debounced search via `GET /api/github/repos`. Terminal-style rows with per-row "Enroll" buttons. Sharp corners, amber focus ring.
 
+#### `ThinkingToggle`
+Collapsed/expanded display of agent text thinking steps. Shows "Show thinking (N steps)" when collapsed, numbered text blocks when expanded.
+
+#### `FileDiff`
+Renders a PR file diff with filename, +/- stats, and color-coded patch lines. Truncates patches over 200 lines with "Show more" button.
+
+#### `InlineChat`
+Text input + message history for inline chat with droid. Calls `POST /api/chat` with context. User messages right-aligned, assistant messages left-aligned with amber border.
+
 ### API Routes
 
 #### `POST /api/enroll`
