@@ -35,28 +35,104 @@ export function PendingActionPanel({ action }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 space-y-3">
+    <div
+      className="space-y-3 p-4"
+      style={{
+        background: "var(--surface)",
+        borderLeft: "3px solid var(--accent)",
+        border: "1px solid var(--border)",
+        borderLeftWidth: "3px",
+        borderLeftColor: "var(--accent)",
+        opacity: done ? 0.5 : 1,
+        transition: "opacity 0.2s",
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          style={{
+            width: "6px",
+            height: "6px",
+            borderRadius: "50%",
+            background: "var(--accent)",
+            display: "inline-block",
+            animation: "pulse-dot 1.5s ease-in-out infinite",
+          }}
+        />
+        <span
+          className="font-data text-xs uppercase tracking-widest"
+          style={{ color: "var(--text-ter)" }}
+        >
+          Awaiting Approval
+        </span>
+      </div>
+
       <div>
-        <span className="font-semibold text-sm text-yellow-800">{action.tool}</span>
-        <pre className="mt-1 rounded bg-white border border-yellow-100 p-2 text-xs text-zinc-700 overflow-x-auto">
+        <span
+          className="font-data text-sm"
+          style={{ color: "var(--accent)" }}
+        >
+          {action.tool}
+        </span>
+        <pre
+          className="mt-2 p-3 text-xs overflow-x-auto font-data"
+          style={{
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            color: "var(--text-sec)",
+          }}
+        >
           {JSON.stringify(action.args, null, 2)}
         </pre>
       </div>
+
       {error && (
-        <p role="alert" className="text-sm text-red-600">{error}</p>
+        <p role="alert" className="font-data text-xs" style={{ color: "var(--red)" }}>
+          {error}
+        </p>
       )}
+
       <div className="flex gap-2">
         <button
           onClick={() => handleDecision("approved")}
           disabled={done || loading}
-          className="rounded px-3 py-1.5 text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-xs font-data uppercase tracking-wider transition-all"
+          style={{
+            color: "var(--green)",
+            border: "1px solid var(--green)",
+            background: "transparent",
+          }}
+          onMouseEnter={(e) => {
+            if (!done && !loading) {
+              e.currentTarget.style.background = "var(--green)"
+              e.currentTarget.style.color = "var(--bg)"
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent"
+            e.currentTarget.style.color = "var(--green)"
+          }}
         >
-          Approve
+          {loading ? "..." : "Approve"}
         </button>
         <button
           onClick={() => handleDecision("rejected")}
           disabled={done || loading}
-          className="rounded px-3 py-1.5 text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-xs font-data uppercase tracking-wider transition-all"
+          style={{
+            color: "var(--red)",
+            border: "1px solid var(--red)",
+            background: "transparent",
+          }}
+          onMouseEnter={(e) => {
+            if (!done && !loading) {
+              e.currentTarget.style.background = "var(--red)"
+              e.currentTarget.style.color = "var(--bg)"
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent"
+            e.currentTarget.style.color = "var(--red)"
+          }}
         >
           Reject
         </button>

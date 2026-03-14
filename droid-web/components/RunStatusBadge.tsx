@@ -1,11 +1,24 @@
 import type { AgentRunStatus } from "@/lib/types"
 
-const STATUS_STYLES: Record<AgentRunStatus, string> = {
-  pending: "bg-zinc-100 text-zinc-600",
-  running: "bg-blue-100 text-blue-700",
-  paused: "bg-yellow-100 text-yellow-700",
-  completed: "bg-green-100 text-green-700",
-  failed: "bg-red-100 text-red-700",
+interface DotConfig {
+  color: string
+  animation?: string
+}
+
+const DOT_CONFIG: Record<AgentRunStatus, DotConfig> = {
+  pending:   { color: "var(--text-ter)" },
+  running:   { color: "var(--blue)", animation: "pulse-dot 1.5s ease-in-out infinite" },
+  paused:    { color: "var(--yellow)", animation: "pulse-slow 2s ease-in-out infinite" },
+  completed: { color: "var(--green)" },
+  failed:    { color: "var(--red)" },
+}
+
+const STATUS_CLASS: Record<AgentRunStatus, string> = {
+  pending:   "status-pending",
+  running:   "status-running",
+  paused:    "status-paused",
+  completed: "status-completed",
+  failed:    "status-failed",
 }
 
 interface Props {
@@ -13,10 +26,25 @@ interface Props {
 }
 
 export function RunStatusBadge({ status }: Props) {
+  const { color, animation } = DOT_CONFIG[status]
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center gap-1.5 ${STATUS_CLASS[status]}`}
+      style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--text-sec)" }}
     >
+      <span
+        data-dot
+        style={{
+          width: "6px",
+          height: "6px",
+          borderRadius: "50%",
+          background: color,
+          display: "inline-block",
+          flexShrink: 0,
+          animation,
+        }}
+      />
       {status}
     </span>
   )

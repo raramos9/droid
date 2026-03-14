@@ -26,60 +26,114 @@ export default async function RepoDetailPage({ params }: Props) {
   const grouped = Array.from(latestByIssue.values())
 
   return (
-    <main className="min-h-screen bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white px-6 py-4">
-        <nav className="text-sm text-zinc-500 space-x-1">
-          <Link href="/dashboard" className="hover:text-zinc-800">dashboard</Link>
-          <span>/</span>
-          <span className="text-zinc-900 font-medium">{owner}/{repo}</span>
+    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
+      <header
+        className="px-6 py-4"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
+        <nav className="font-data text-xs flex items-center gap-2" style={{ color: "var(--text-ter)" }}>
+          <Link href="/dashboard" className="transition-colors" style={{ color: "var(--text-sec)" }}
+            onMouseEnter={() => {}} // hover handled via CSS
+          >
+            droid
+          </Link>
+          <span style={{ color: "var(--accent)" }}>&gt;</span>
+          <span style={{ color: "var(--text-pri)" }}>{owner}/{repo}</span>
         </nav>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-        <h2 className="text-xl font-semibold text-zinc-900">Activity</h2>
+      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+        <h2
+          className="font-display text-sm font-medium uppercase tracking-widest"
+          style={{ color: "var(--text-ter)" }}
+        >
+          Activity
+        </h2>
 
         {grouped.length === 0 ? (
-          <p className="text-sm text-zinc-500">No agent runs yet for this repository.</p>
+          <p
+            className="font-data text-sm cursor-blink"
+            style={{ color: "var(--text-ter)" }}
+          >
+            $ no agent runs yet
+          </p>
         ) : (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-zinc-500 text-xs uppercase tracking-wide">
-                <th className="pb-2 pr-4">Issue</th>
-                <th className="pb-2 pr-4">Status</th>
-                <th className="pb-2 pr-4">Iterations</th>
-                <th className="pb-2">Updated</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {grouped.map((run) => {
-                const issueNumber = run.goal?.context?.issueNumber
-                const title = run.goal?.context?.title ?? `Run ${run.run_id.slice(0, 8)}`
-                return (
-                  <tr key={run.run_id} className="hover:bg-zinc-50">
-                    <td className="py-3 pr-4">
-                      {issueNumber ? (
-                        <Link
-                          href={`/dashboard/${owner}/${repo}/issues/${issueNumber}`}
-                          className="text-zinc-900 hover:underline font-medium"
-                        >
-                          #{issueNumber} {title}
-                        </Link>
-                      ) : (
-                        <span className="text-zinc-700">{title}</span>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <RunStatusBadge status={run.status} />
-                    </td>
-                    <td className="py-3 pr-4 text-zinc-500">{run.iteration}</td>
-                    <td className="py-3 text-zinc-400">
-                      {new Date(run.updated_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div style={{ borderTop: "1px solid var(--border)" }}>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--accent)" }}>
+                  <th
+                    className="pb-2 pr-4 pt-3 text-left font-data text-xs uppercase tracking-widest"
+                    style={{ color: "var(--text-ter)" }}
+                  >
+                    Issue
+                  </th>
+                  <th
+                    className="pb-2 pr-4 pt-3 text-left font-data text-xs uppercase tracking-widest"
+                    style={{ color: "var(--text-ter)" }}
+                  >
+                    Status
+                  </th>
+                  <th
+                    className="pb-2 pr-4 pt-3 text-left font-data text-xs uppercase tracking-widest"
+                    style={{ color: "var(--text-ter)" }}
+                  >
+                    Iter
+                  </th>
+                  <th
+                    className="pb-2 pt-3 text-left font-data text-xs uppercase tracking-widest"
+                    style={{ color: "var(--text-ter)" }}
+                  >
+                    Updated
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {grouped.map((run, i) => {
+                  const issueNumber = run.goal?.context?.issueNumber
+                  const title = run.goal?.context?.title ?? `Run ${run.run_id.slice(0, 8)}`
+                  return (
+                    <tr
+                      key={run.run_id}
+                      className="stagger-item transition-colors"
+                      style={
+                        {
+                          "--i": i,
+                          borderBottom: "1px solid var(--border)",
+                        } as React.CSSProperties
+                      }
+                    >
+                      <td className="py-3 pr-4">
+                        {issueNumber ? (
+                          <Link
+                            href={`/dashboard/${owner}/${repo}/issues/${issueNumber}`}
+                            className="font-data transition-colors hover:underline"
+                            style={{ color: "var(--text-pri)" }}
+                          >
+                            <span style={{ color: "var(--accent)" }}>#{issueNumber}</span>{" "}
+                            {title}
+                          </Link>
+                        ) : (
+                          <span className="font-data" style={{ color: "var(--text-sec)" }}>
+                            {title}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <RunStatusBadge status={run.status} />
+                      </td>
+                      <td className="py-3 pr-4 font-data text-xs" style={{ color: "var(--text-ter)" }}>
+                        {run.iteration}
+                      </td>
+                      <td className="py-3 font-data text-xs" style={{ color: "var(--text-ter)" }}>
+                        {new Date(run.updated_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </main>

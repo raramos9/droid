@@ -34,4 +34,10 @@ describe("RunStatusBadge", () => {
       (c2.firstChild as HTMLElement).className
     )
   })
+
+  it("renders a dot indicator alongside the label", () => {
+    const { container } = render(<RunStatusBadge status="running" />)
+    const dot = container.querySelector("[data-dot]")
+    expect(dot).toBeInTheDocument()
+  })
 })
