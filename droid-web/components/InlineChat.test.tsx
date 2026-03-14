@@ -17,12 +17,12 @@ beforeEach(() => {
 describe("InlineChat", () => {
   it("renders empty state placeholder", () => {
     render(<InlineChat context={mockContext} />)
-    expect(screen.getByText(/ask droid anything/)).toBeInTheDocument()
+    expect(screen.getByText(/ask about this issue/i)).toBeInTheDocument()
   })
 
   it("renders textarea for input", () => {
     render(<InlineChat context={mockContext} />)
-    const textarea = screen.getByPlaceholderText(/ask droid/)
+    const textarea = screen.getByPlaceholderText(/ask about this issue/i)
     expect(textarea.tagName).toBe("TEXTAREA")
   })
 
@@ -34,7 +34,7 @@ describe("InlineChat", () => {
 
   it("enables submit button when input has text", () => {
     render(<InlineChat context={mockContext} />)
-    const textarea = screen.getByPlaceholderText(/ask droid/)
+    const textarea = screen.getByPlaceholderText(/ask about this issue/i)
     fireEvent.change(textarea, { target: { value: "hello" } })
     const button = screen.getByRole("button", { name: /send/i })
     expect(button).not.toBeDisabled()
@@ -47,7 +47,7 @@ describe("InlineChat", () => {
     })
 
     render(<InlineChat context={mockContext} />)
-    const textarea = screen.getByPlaceholderText(/ask droid/)
+    const textarea = screen.getByPlaceholderText(/ask about this issue/i)
     fireEvent.change(textarea, { target: { value: "What is this?" } })
     fireEvent.click(screen.getByRole("button", { name: /send/i }))
 
@@ -64,7 +64,7 @@ describe("InlineChat", () => {
     })
 
     render(<InlineChat context={mockContext} />)
-    const textarea = screen.getByPlaceholderText(/ask droid/) as HTMLTextAreaElement
+    const textarea = screen.getByPlaceholderText(/ask about this issue/i) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: "hello" } })
     fireEvent.click(screen.getByRole("button", { name: /send/i }))
 
@@ -80,7 +80,7 @@ describe("InlineChat", () => {
     })
 
     render(<InlineChat context={mockContext} />)
-    const textarea = screen.getByPlaceholderText(/ask droid/)
+    const textarea = screen.getByPlaceholderText(/ask about this issue/i)
     fireEvent.change(textarea, { target: { value: "hello" } })
     fireEvent.click(screen.getByRole("button", { name: /send/i }))
 
@@ -96,7 +96,7 @@ describe("InlineChat", () => {
     )
 
     render(<InlineChat context={mockContext} />)
-    const textarea = screen.getByPlaceholderText(/ask droid/)
+    const textarea = screen.getByPlaceholderText(/ask about this issue/i)
     fireEvent.change(textarea, { target: { value: "hello" } })
     fireEvent.click(screen.getByRole("button", { name: /send/i }))
 

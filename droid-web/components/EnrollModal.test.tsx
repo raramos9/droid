@@ -134,7 +134,7 @@ describe("EnrollModal", () => {
     fireEvent.click(screen.getByText("Search"))
 
     await waitFor(() => {
-      expect(screen.getByText("[private]")).toBeInTheDocument()
+      expect(screen.getByText("private")).toBeInTheDocument()
     })
   })
 

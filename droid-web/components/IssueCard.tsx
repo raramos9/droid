@@ -52,42 +52,34 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
 
   return (
     <div
-      className="p-4 space-y-3"
-      style={{
-        background: "var(--surface)",
-        borderLeft: run
-          ? "3px solid var(--accent)"
-          : "1px solid var(--border)",
-        borderTop: "1px solid var(--border)",
-        borderRight: "1px solid var(--border)",
-        borderBottom: "1px solid var(--border)",
-      }}
+      className="py-4 space-y-3"
+      style={{ borderBottom: "1px solid var(--border)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <span className="font-data text-sm" style={{ color: "var(--accent)" }}>
+          <span className="font-mono text-xs" style={{ color: "var(--text-tertiary)" }}>
             #{issue.number}
           </span>{" "}
-          <span className="text-sm" style={{ color: "var(--text-pri)" }}>
+          <span className="text-sm font-medium" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
             {issue.title}
           </span>
         </div>
       </div>
 
-      <div className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
+      <div className="text-xs" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
         opened by {issue.user.login} on{" "}
         {new Date(issue.created_at).toLocaleDateString()}
       </div>
 
       {run && (
         <span
-          className="font-data text-xs uppercase inline-block px-2 py-0.5"
+          className="badge"
           style={{
-            color: "var(--accent)",
-            background: "var(--accent-dim)",
+            background: "var(--status-success-bg)",
+            color: "var(--status-success)",
           }}
         >
-          DROID RESPONDED
+          Droid responded
         </span>
       )}
 
@@ -98,7 +90,7 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
           <p
             className="text-sm italic"
             style={{
-              color: "var(--text-sec)",
+              color: "var(--text-secondary)",
               overflow: "hidden",
               display: "-webkit-box",
               WebkitLineClamp: showFullComment ? undefined : 3,
@@ -110,8 +102,8 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
           {droidComment.split("\n").length > 3 && !showFullComment && (
             <button
               onClick={() => setShowFullComment(true)}
-              className="font-data text-xs mt-1"
-              style={{ color: "var(--accent)" }}
+              className="text-xs mt-1"
+              style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)" }}
             >
               Show more
             </button>
@@ -123,13 +115,7 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
         <button
           onClick={handleDispatch}
           disabled={dispatchState !== "idle"}
-          className="font-data text-xs px-3 py-1"
-          style={{
-            color: "var(--accent)",
-            border: "1px solid var(--accent)",
-            background: "transparent",
-            opacity: dispatchState !== "idle" ? 0.5 : 1,
-          }}
+          className="btn-secondary text-xs px-3 py-1"
         >
           {dispatchState === "idle" && "Dispatch droid"}
           {dispatchState === "loading" && "Dispatching..."}

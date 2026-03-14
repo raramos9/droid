@@ -62,29 +62,35 @@ export function EnrollModal({ onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.85)" }}
+      style={{ background: "rgba(0,0,0,0.6)" }}
     >
       <div
         className="w-full max-w-lg p-6 space-y-5"
         style={{
-          background: "var(--surface)",
+          background: "var(--surface-overlay)",
           border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--shadow-lg)",
         }}
       >
         <div className="flex items-center justify-between">
           <h2
-            className="font-display text-sm uppercase tracking-widest font-medium"
-            style={{ color: "var(--accent)" }}
+            className="text-base font-semibold"
+            style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}
           >
-            Enroll Repository
+            Enroll a repository
           </h2>
           <button
             aria-label="Close"
             onClick={onClose}
-            className="font-data text-lg leading-none transition-colors"
-            style={{ color: "var(--text-ter)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-pri)" }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-ter)" }}
+            className="text-lg leading-none"
+            style={{
+              color: "var(--text-tertiary)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              transition: "color var(--transition)",
+            }}
           >
             &times;
           </button>
@@ -97,26 +103,26 @@ export function EnrollModal({ onClose }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && search()}
-            className="flex-1 px-3 py-2 text-sm font-data outline-none"
+            className="flex-1 px-3 py-2 text-sm outline-none"
             style={{
-              background: "var(--bg)",
+              background: "var(--surface-raised)",
               border: "1px solid var(--border)",
-              color: "var(--text-pri)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-sans)",
             }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)" }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)" }}
           />
           <button
             onClick={search}
             disabled={loading}
-            className="btn-amber px-4 py-2 disabled:opacity-40"
+            className="btn-primary px-4 py-2"
           >
             {loading ? "..." : "Search"}
           </button>
         </div>
 
         {error && (
-          <p className="font-data text-xs" style={{ color: "var(--red)" }}>
+          <p className="text-xs" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
             {error}
           </p>
         )}
@@ -124,48 +130,34 @@ export function EnrollModal({ onClose }: Props) {
         {repos.length > 0 && (
           <ul
             className="max-h-64 overflow-y-auto"
-            style={{ border: "1px solid var(--border)" }}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-md)",
+            }}
           >
             {repos.map((repo) => (
               <li
                 key={repo.full_name}
                 className="flex items-center justify-between px-3 py-2.5 transition-colors"
-                style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface)" }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface-2)" }}
+                style={{
+                  borderBottom: "1px solid var(--border)",
+                }}
               >
-                <span className="font-data text-sm" style={{ color: "var(--text-pri)" }}>
+                <span className="text-sm" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
                   {repo.full_name}
                   {repo.private && (
                     <span
                       className="ml-2 text-xs"
-                      style={{ color: "var(--text-ter)" }}
+                      style={{ color: "var(--text-tertiary)" }}
                     >
-                      [private]
+                      private
                     </span>
                   )}
                 </span>
                 <button
                   onClick={() => enroll(repo)}
                   disabled={enrolling === repo.full_name}
-                  className="font-data text-xs uppercase tracking-wider px-3 py-1 transition-all disabled:opacity-40"
-                  style={{
-                    color: "var(--accent)",
-                    border: "1px solid var(--accent-dim)",
-                    background: "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (enrolling !== repo.full_name) {
-                      e.currentTarget.style.borderColor = "var(--accent)"
-                      e.currentTarget.style.background = "var(--accent)"
-                      e.currentTarget.style.color = "var(--bg)"
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--accent-dim)"
-                    e.currentTarget.style.background = "transparent"
-                    e.currentTarget.style.color = "var(--accent)"
-                  }}
+                  className="btn-primary text-xs px-3 py-1"
                 >
                   {enrolling === repo.full_name ? "..." : "Enroll"}
                 </button>

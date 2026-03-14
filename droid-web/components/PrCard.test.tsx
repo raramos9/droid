@@ -42,12 +42,12 @@ describe("PrCard", () => {
 
   it("shows DROID CREATED badge when isDroidCreated", () => {
     render(<PrCard pr={droidPr} isDroidCreated={true} owner="acme" repo="api" />)
-    expect(screen.getByText("DROID CREATED")).toBeInTheDocument()
+    expect(screen.getByText("Droid created")).toBeInTheDocument()
   })
 
   it("does not show badge when not droid created", () => {
     render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
-    expect(screen.queryByText("DROID CREATED")).not.toBeInTheDocument()
+    expect(screen.queryByText("Droid created")).not.toBeInTheDocument()
   })
 
   it("renders Show files button", () => {
@@ -111,7 +111,7 @@ describe("PrCard", () => {
 
   it("renders InlineChat", () => {
     render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
-    expect(screen.getByText(/ask droid anything/)).toBeInTheDocument()
+    expect(screen.getByText(/ask about this issue/i)).toBeInTheDocument()
   })
 
   it("dispatches droid on button click", async () => {

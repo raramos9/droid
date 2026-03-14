@@ -50,12 +50,12 @@ describe("IssueCard", () => {
 
   it("shows DROID RESPONDED badge when run exists", () => {
     render(<IssueCard issue={mockIssue} run={mockRun} owner="acme" repo="api" />)
-    expect(screen.getByText("DROID RESPONDED")).toBeInTheDocument()
+    expect(screen.getByText("Droid responded")).toBeInTheDocument()
   })
 
   it("does not show badge when run is null", () => {
     render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
-    expect(screen.queryByText("DROID RESPONDED")).not.toBeInTheDocument()
+    expect(screen.queryByText("Droid responded")).not.toBeInTheDocument()
   })
 
   it("renders dispatch button", () => {
@@ -93,7 +93,7 @@ describe("IssueCard", () => {
 
   it("renders InlineChat", () => {
     render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
-    expect(screen.getByText(/ask droid anything/)).toBeInTheDocument()
+    expect(screen.getByText(/ask about this issue/i)).toBeInTheDocument()
   })
 
   it("fetches droid comment when run exists", async () => {

@@ -91,26 +91,26 @@ export function DashboardClient({ enrolledRepos }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && search()}
-          className="flex-1 px-3 py-2 text-sm font-data outline-none"
+          className="flex-1 px-3 py-2 text-sm outline-none"
           style={{
-            background: "var(--surface)",
+            background: "var(--surface-raised)",
             border: "1px solid var(--border)",
-            color: "var(--text-pri)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
           }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)" }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)" }}
         />
         <button
           onClick={search}
           disabled={loading}
-          className="btn-amber px-4 py-2 disabled:opacity-40"
+          className="btn-primary px-4 py-2"
         >
           {loading ? "..." : "Search"}
         </button>
       </div>
 
       {error && (
-        <p className="font-data text-xs" style={{ color: "var(--red)" }}>
+        <p className="text-xs" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
           {error}
         </p>
       )}
@@ -122,55 +122,49 @@ export function DashboardClient({ enrolledRepos }: Props) {
             return (
               <div
                 key={repo.full_name}
-                className="flex flex-col justify-between p-4 transition-colors"
+                className="card flex flex-col justify-between p-4"
                 style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderLeft: enrolled ? "3px solid var(--accent)" : "1px solid var(--border)",
+                  borderLeft: enrolled ? `3px solid var(--status-success)` : undefined,
                 }}
               >
-                {/* Repo name */}
                 <div className="mb-3">
-                  <p className="font-data text-sm leading-snug" style={{ color: "var(--text-ter)" }}>
-                    {repo.owner.login}
-                  </p>
-                  <p className="font-data text-base font-medium leading-tight" style={{ color: "var(--text-pri)" }}>
+                  <p className="text-sm font-medium leading-tight" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
                     {repo.full_name}
                   </p>
                 </div>
 
-                {/* Meta row */}
                 <div className="flex items-center justify-between mb-3">
                   <span
-                    className="font-data text-xs px-1.5 py-0.5"
+                    className="badge"
                     style={{
-                      color: repo.private ? "var(--text-ter)" : "var(--blue)",
-                      border: `1px solid ${repo.private ? "var(--border)" : "var(--blue)"}`,
+                      background: "var(--surface-raised)",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     {repo.private ? "Private" : "Public"}
                   </span>
-                  <span className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
+                  <span className="text-xs font-mono" style={{ color: "var(--text-tertiary)" }}>
                     {repo.pushed_at ? new Date(repo.pushed_at).toLocaleDateString() : "—"}
                   </span>
                 </div>
 
-                {/* Divider */}
                 <div style={{ borderTop: "1px solid var(--border)", marginBottom: "12px" }} />
 
-                {/* Action row */}
                 {enrolled ? (
                   <div className="flex items-center justify-between">
                     <span
-                      className="font-data text-xs px-2 py-0.5 uppercase tracking-wider"
-                      style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)" }}
+                      className="badge"
+                      style={{
+                        background: "var(--status-success-bg)",
+                        color: "var(--status-success)",
+                      }}
                     >
                       Enrolled
                     </span>
                     <Link
                       href={`/dashboard/${repo.owner.login}/${repo.name}`}
-                      className="font-data text-xs transition-colors"
-                      style={{ color: "var(--accent)" }}
+                      className="text-xs transition-colors"
+                      style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
                     >
                       View activity →
                     </Link>
@@ -180,24 +174,7 @@ export function DashboardClient({ enrolledRepos }: Props) {
                     <button
                       onClick={() => enroll(repo)}
                       disabled={enrolling === repo.full_name}
-                      className="font-data text-xs px-3 py-1 uppercase tracking-wider transition-all disabled:opacity-40"
-                      style={{
-                        color: "var(--accent)",
-                        border: "1px solid var(--accent-dim)",
-                        background: "transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (enrolling !== repo.full_name) {
-                          e.currentTarget.style.background = "var(--accent)"
-                          e.currentTarget.style.color = "var(--bg)"
-                          e.currentTarget.style.borderColor = "var(--accent)"
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent"
-                        e.currentTarget.style.color = "var(--accent)"
-                        e.currentTarget.style.borderColor = "var(--accent-dim)"
-                      }}
+                      className="btn-secondary text-xs px-3 py-1"
                     >
                       {enrolling === repo.full_name ? "Enrolling..." : "Enroll"}
                     </button>
@@ -215,11 +192,13 @@ export function DashboardClient({ enrolledRepos }: Props) {
             <button
               key={i + 1}
               onClick={() => setPage(i + 1)}
-              className="font-data px-2.5 py-1 text-xs transition-colors"
+              className="text-xs px-2.5 py-1"
               style={{
-                background: page === i + 1 ? "var(--accent)" : "var(--surface-2)",
-                color: page === i + 1 ? "var(--bg)" : "var(--text-sec)",
+                background: page === i + 1 ? "var(--interactive)" : "var(--surface-raised)",
+                color: page === i + 1 ? "var(--bg)" : "var(--text-secondary)",
                 border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
               }}
             >
               {i + 1}

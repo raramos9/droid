@@ -81,54 +81,41 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
 
   return (
     <div
-      className="p-4 space-y-3"
-      style={{
-        background: "var(--surface)",
-        borderLeft: isDroidCreated
-          ? "3px solid var(--accent)"
-          : "1px solid var(--border)",
-        borderTop: "1px solid var(--border)",
-        borderRight: "1px solid var(--border)",
-        borderBottom: "1px solid var(--border)",
-      }}
+      className="py-4 space-y-3"
+      style={{ borderBottom: "1px solid var(--border)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <span className="font-data text-sm" style={{ color: "var(--accent)" }}>
+          <span className="font-mono text-xs" style={{ color: "var(--text-tertiary)" }}>
             #{pr.number}
           </span>{" "}
-          <span className="text-sm" style={{ color: "var(--text-pri)" }}>
+          <span className="text-sm font-medium" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
             {pr.title}
           </span>
         </div>
       </div>
 
-      <div className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
+      <div className="text-xs" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
         {pr.head.ref} → {pr.base.ref} on{" "}
         {new Date(pr.created_at).toLocaleDateString()}
       </div>
 
       {isDroidCreated && (
         <span
-          className="font-data text-xs uppercase inline-block px-2 py-0.5"
+          className="badge"
           style={{
-            color: "var(--accent)",
-            background: "var(--accent-dim)",
+            background: "var(--status-info-bg)",
+            color: "var(--status-info)",
           }}
         >
-          DROID CREATED
+          Droid created
         </span>
       )}
 
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={handleShowFiles}
-          className="font-data text-xs px-3 py-1"
-          style={{
-            color: "var(--text-sec)",
-            border: "1px solid var(--border)",
-            background: "transparent",
-          }}
+          className="btn-secondary text-xs px-3 py-1"
         >
           {showFiles ? "Hide files" : "Show files"}
         </button>
@@ -136,13 +123,7 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
         <button
           onClick={handleDispatch}
           disabled={dispatchState !== "idle"}
-          className="font-data text-xs px-3 py-1"
-          style={{
-            color: "var(--accent)",
-            border: "1px solid var(--accent)",
-            background: "transparent",
-            opacity: dispatchState !== "idle" ? 0.5 : 1,
-          }}
+          className="btn-secondary text-xs px-3 py-1"
         >
           {dispatchState === "idle" && "Dispatch droid"}
           {dispatchState === "loading" && "Dispatching..."}
@@ -152,13 +133,7 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
         <button
           onClick={handleMerge}
           disabled={mergeState !== "idle"}
-          className="font-data text-xs px-3 py-1"
-          style={{
-            color: "var(--green)",
-            border: "1px solid var(--green)",
-            background: "transparent",
-            opacity: mergeState !== "idle" ? 0.5 : 1,
-          }}
+          className="btn-success text-xs px-3 py-1"
         >
           {mergeState === "idle" && "Merge"}
           {mergeState === "loading" && "Merging..."}
@@ -168,7 +143,7 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
       </div>
 
       {mergeError && (
-        <p className="font-data text-xs" style={{ color: "var(--red)" }}>
+        <p className="text-xs" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
           {mergeError}
         </p>
       )}

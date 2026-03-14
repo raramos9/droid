@@ -10,10 +10,10 @@ interface Props {
 const MAX_LINES = 200
 
 function getLineColor(line: string): string {
-  if (line.startsWith("@@")) return "var(--accent)"
-  if (line.startsWith("+") && !line.startsWith("+++")) return "var(--green)"
-  if (line.startsWith("-") && !line.startsWith("---")) return "var(--red)"
-  return "var(--text-sec)"
+  if (line.startsWith("@@")) return "var(--text-tertiary)"
+  if (line.startsWith("+") && !line.startsWith("+++")) return "var(--status-success)"
+  if (line.startsWith("-") && !line.startsWith("---")) return "var(--status-error)"
+  return "var(--text-secondary)"
 }
 
 export function FileDiff({ file }: Props) {
@@ -27,23 +27,27 @@ export function FileDiff({ file }: Props) {
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between py-1">
-        <span className="font-data text-xs" style={{ color: "var(--text-sec)" }}>
+        <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
           {file.filename}
         </span>
-        <span className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
+        <span className="font-mono text-xs" style={{ color: "var(--text-tertiary)" }}>
           +{file.additions} -{file.deletions}
         </span>
       </div>
 
       {!file.patch ? (
-        <p className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
+        <p className="font-mono text-xs" style={{ color: "var(--text-tertiary)" }}>
           Binary file or no diff available
         </p>
       ) : (
         <>
           <pre
-            className="overflow-x-auto p-2 text-xs font-data"
-            style={{ background: "var(--surface-2)", borderRadius: "2px" }}
+            className="overflow-x-auto p-2 text-xs font-mono"
+            style={{
+              background: "var(--surface-raised)",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border)",
+            }}
           >
             {visibleLines.map((line, i) => (
               <span
@@ -57,8 +61,8 @@ export function FileDiff({ file }: Props) {
           {truncated && (
             <button
               onClick={() => setShowAll(true)}
-              className="font-data text-xs mt-1"
-              style={{ color: "var(--accent)" }}
+              className="text-xs mt-1"
+              style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)" }}
             >
               ... {remainingCount} more lines
             </button>

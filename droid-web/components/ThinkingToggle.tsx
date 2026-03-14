@@ -25,10 +25,10 @@ export function ThinkingToggle({ messages }: Props) {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="font-data text-xs flex items-center gap-2 py-1"
-        style={{ color: "var(--text-ter)" }}
+        className="text-xs flex items-center gap-2 py-1"
+        style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)" }}
       >
-        <span style={{ color: "var(--accent)" }}>&gt;</span>
+        <span style={{ color: "var(--text-tertiary)" }}>›</span>
         Show thinking ({textBlocks.length} steps)
       </button>
     )
@@ -46,14 +46,14 @@ export function ThinkingToggle({ messages }: Props) {
           }}
         >
           <span
-            className="font-data text-xs shrink-0"
-            style={{ color: "var(--accent)" }}
+            className="font-mono text-xs shrink-0"
+            style={{ color: "var(--text-tertiary)" }}
           >
-            [{i + 1}]
+            {i + 1}.
           </span>
           <span
             className="whitespace-pre-wrap text-sm"
-            style={{ color: "var(--text-sec)" }}
+            style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
           >
             {block.text}
           </span>
@@ -61,8 +61,8 @@ export function ThinkingToggle({ messages }: Props) {
       ))}
       <button
         onClick={() => setExpanded(false)}
-        className="font-data text-xs py-1"
-        style={{ color: "var(--text-ter)" }}
+        className="text-xs py-1"
+        style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)" }}
       >
         Hide thinking
       </button>

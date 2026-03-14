@@ -79,7 +79,7 @@ describe("RepoTabs", () => {
     render(<RepoTabs owner="acme" repo="api" runsMap={{}} />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no open issues/)).toBeInTheDocument()
+      expect(screen.getByText(/no open issues/i)).toBeInTheDocument()
     })
   })
 
@@ -93,10 +93,10 @@ describe("RepoTabs", () => {
 
     // Wait for issues tab to load first
     await waitFor(() => {
-      expect(screen.getByText(/no open issues/)).toBeInTheDocument()
+      expect(screen.getByText(/no open issues/i)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole("button", { name: /prs/i }))
+    fireEvent.click(screen.getByRole("button", { name: /pull requests/i }))
 
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("tab=prs")
@@ -113,7 +113,7 @@ describe("RepoTabs", () => {
     render(<RepoTabs owner="acme" repo="api" runsMap={{}} />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no open prs/)).toBeInTheDocument()
+      expect(screen.getByText(/no open pull requests/i)).toBeInTheDocument()
     })
   })
 
@@ -140,7 +140,7 @@ describe("RepoTabs", () => {
 
     await waitFor(() => {
       expect(screen.getByText("#5")).toBeInTheDocument()
-      expect(screen.getByText("DROID CREATED")).toBeInTheDocument()
+      expect(screen.getByText("Droid created")).toBeInTheDocument()
     })
   })
 
@@ -148,7 +148,7 @@ describe("RepoTabs", () => {
     ;(global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}))
 
     render(<RepoTabs owner="acme" repo="api" runsMap={{}} />)
-    expect(screen.getByText(/loading issues/)).toBeInTheDocument()
+    expect(screen.getByText(/loading issues/i)).toBeInTheDocument()
   })
 
   it("shows error state on fetch failure", async () => {
@@ -183,7 +183,7 @@ describe("RepoTabs", () => {
     render(<RepoTabs owner="acme" repo="api" runsMap={runsMap} />)
 
     await waitFor(() => {
-      expect(screen.getByText("DROID RESPONDED")).toBeInTheDocument()
+      expect(screen.getByText("Droid responded")).toBeInTheDocument()
     })
   })
 })

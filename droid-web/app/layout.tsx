@@ -1,21 +1,16 @@
 import type { Metadata } from "next"
-import { DM_Mono, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google"
+import { DM_Sans, Fira_Code } from "next/font/google"
+import Script from "next/script"
 import "./globals.css"
 
-const dmMono = DM_Mono({
-  weight: ["300", "400", "500"],
-  subsets: ["latin"],
-  variable: "--font-display",
-})
-
-const ibmPlexSans = IBM_Plex_Sans({
-  weight: ["300", "400", "500", "600"],
+const dmSans = DM_Sans({
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
   variable: "--font-sans",
 })
 
-const jetbrainsMono = JetBrains_Mono({
-  weight: ["300", "400", "500"],
+const firaCode = Fira_Code({
+  weight: ["400", "500"],
   subsets: ["latin"],
   variable: "--font-mono",
 })
@@ -25,10 +20,15 @@ export const metadata: Metadata = {
   description: "AI-powered GitHub issue resolution",
 }
 
+const themeScript = `(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}})();`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${dmMono.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body className={`${dmSans.variable} ${firaCode.variable} antialiased`}>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         {children}
       </body>
     </html>

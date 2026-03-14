@@ -54,8 +54,8 @@ export function InlineChat({ context }: Props) {
   return (
     <div className="mt-3 space-y-2">
       {messages.length === 0 && !loading && (
-        <p className="font-data text-xs" style={{ color: "var(--text-ter)" }}>
-          $ ask droid anything...
+        <p className="text-xs" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+          Ask about this issue...
         </p>
       )}
 
@@ -64,10 +64,13 @@ export function InlineChat({ context }: Props) {
           key={i}
           className="text-sm p-2"
           style={{
-            background: msg.role === "user" ? "var(--surface-2)" : "var(--surface)",
-            borderLeft: msg.role === "assistant" ? "2px solid var(--accent)" : undefined,
+            background: msg.role === "user" ? "var(--surface-raised)" : undefined,
+            borderLeft: msg.role === "assistant" ? "2px solid var(--border)" : undefined,
+            paddingLeft: msg.role === "assistant" ? "12px" : undefined,
+            borderRadius: msg.role === "user" ? "var(--radius-md)" : undefined,
             textAlign: msg.role === "user" ? "right" : "left",
-            color: "var(--text-pri)",
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
           }}
         >
           {msg.content}
@@ -75,7 +78,7 @@ export function InlineChat({ context }: Props) {
       ))}
 
       {error && (
-        <p className="font-data text-xs" style={{ color: "var(--red)" }}>
+        <p className="text-xs" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
           {error}
         </p>
       )}
@@ -84,25 +87,21 @@ export function InlineChat({ context }: Props) {
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="$ ask droid..."
-          className="flex-1 font-data text-sm p-2 resize-none"
+          placeholder="Ask about this issue..."
+          className="flex-1 text-sm p-2 resize-none"
           style={{
-            background: "var(--surface-2)",
-            color: "var(--text-pri)",
+            background: "var(--surface-raised)",
+            color: "var(--text-primary)",
             border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            fontFamily: "var(--font-sans)",
           }}
           rows={1}
         />
         <button
           onClick={handleSubmit}
           disabled={!input.trim() || loading}
-          className="font-data text-xs px-3 py-1"
-          style={{
-            color: "var(--accent)",
-            border: "1px solid var(--accent)",
-            background: "transparent",
-            opacity: !input.trim() || loading ? 0.5 : 1,
-          }}
+          className="btn-primary text-xs px-3 py-1"
           aria-label="send"
         >
           Send

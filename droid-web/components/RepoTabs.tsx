@@ -77,45 +77,40 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
   return (
     <div>
       <div className="flex gap-0 mb-6" style={{ borderBottom: "1px solid var(--border)" }}>
-        <button
-          onClick={() => switchTab("issues")}
-          className="font-data text-xs uppercase tracking-widest px-4 py-2"
-          style={{
-            color: activeTab === "issues" ? "var(--text-pri)" : "var(--text-ter)",
-            borderBottom: activeTab === "issues" ? "2px solid var(--accent)" : "2px solid transparent",
-            background: "transparent",
-          }}
-        >
-          Issues
-        </button>
-        <button
-          onClick={() => switchTab("prs")}
-          className="font-data text-xs uppercase tracking-widest px-4 py-2"
-          style={{
-            color: activeTab === "prs" ? "var(--text-pri)" : "var(--text-ter)",
-            borderBottom: activeTab === "prs" ? "2px solid var(--accent)" : "2px solid transparent",
-            background: "transparent",
-          }}
-        >
-          PRs
-        </button>
+        {["issues", "prs"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => switchTab(tab)}
+            className="text-sm px-4 py-2"
+            style={{
+              color: activeTab === tab ? "var(--text-primary)" : "var(--text-tertiary)",
+              borderBottom: activeTab === tab ? "2px solid var(--text-primary)" : "2px solid transparent",
+              background: "transparent",
+              fontFamily: "var(--font-sans)",
+              fontWeight: activeTab === tab ? 500 : 400,
+              textTransform: "capitalize",
+            }}
+          >
+            {tab === "prs" ? "Pull Requests" : "Issues"}
+          </button>
+        ))}
       </div>
 
       {activeTab === "issues" && (
-        <div className="space-y-4">
+        <div className="space-y-0">
           {issuesLoading && (
-            <p className="font-data text-sm cursor-blink" style={{ color: "var(--text-ter)" }}>
-              $ loading issues...
+            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+              Loading issues...
             </p>
           )}
           {issuesError && (
-            <p className="font-data text-sm" style={{ color: "var(--red)" }}>
-              $ error: {issuesError}
+            <p className="text-sm" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
+              {issuesError}
             </p>
           )}
           {!issuesLoading && !issuesError && issues && issues.length === 0 && (
-            <p className="font-data text-sm" style={{ color: "var(--text-ter)" }}>
-              $ no open issues
+            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+              No open issues
             </p>
           )}
           {issues?.map((issue) => (
@@ -131,20 +126,20 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
       )}
 
       {activeTab === "prs" && (
-        <div className="space-y-4">
+        <div className="space-y-0">
           {prsLoading && (
-            <p className="font-data text-sm cursor-blink" style={{ color: "var(--text-ter)" }}>
-              $ loading prs...
+            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+              Loading pull requests...
             </p>
           )}
           {prsError && (
-            <p className="font-data text-sm" style={{ color: "var(--red)" }}>
-              $ error: {prsError}
+            <p className="text-sm" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
+              {prsError}
             </p>
           )}
           {!prsLoading && !prsError && prs && prs.length === 0 && (
-            <p className="font-data text-sm" style={{ color: "var(--text-ter)" }}>
-              $ no open prs
+            <p className="text-sm" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}>
+              No open pull requests
             </p>
           )}
           {prs?.map((pr) => (
