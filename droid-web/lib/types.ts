@@ -86,6 +86,13 @@ export interface GitHubPRFile {
   patch?: string
 }
 
+export interface PendingActionWithContext extends PendingAction {
+  repo_owner: string
+  repo_name: string
+  issue_number?: number
+  issue_title?: string
+}
+
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string

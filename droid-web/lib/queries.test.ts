@@ -5,6 +5,7 @@ import {
   getPendingActions,
   getRunsMapByIssueNumber,
   getPendingActionsCount,
+  getAllPendingActionsWithContext,
 } from "./queries"
 
 // Mock Supabase client
@@ -277,5 +278,67 @@ describe("getPendingActionsCount", () => {
     mockOr.mockResolvedValueOnce({ data: null, error: { message: "runs error" } })
 
     await expect(getPendingActionsCount("user123")).rejects.toThrow("runs error")
+  })
+})
+
+describe("getAllPendingActionsWithContext", () => {
+  it("returns empty array when no enrolled repos", async () => {
+    mockEq.mockResolvedValueOnce({ data: [], error: null })
+    const result = await getAllPendingActionsWithContext("user123")
+    expect(result).toEqual([])
+  })
+
+  it("returns empty array when no runs for enrolled repos", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    mockOr.mockResolvedValueOnce({ data: [], error: null })
+    const result = await getAllPendingActionsWithContext("user123")
+    expect(result).toEqual([])
+  })
+
+  it("enriches pending actions with repo context", async () => {
+    // Step 1: enrolled repos
+    mockEq.mockResolvedValueOnce({
+      data: [{ owner: "acme", repo: "api" }],
+      error: null,
+    })
+    // Step 2: runs
+    mockOr.mockResolvedValueOnce({
+      data: [
+        {
+          run_id: "run-1",
+          repo_owner: "acme",
+          repo_name: "api",
+          goal: { context: { issueNumber: 5, title: "Fix bug" } },
+        },
+      ],
+      error: null,
+    })
+    // Step 3: pending actions
+    mockOrder.mockResolvedValueOnce({
+      data: [
+        { id: 1, run_id: "run-1", tool: "pushCode", args: {}, status: "pending", tool_use_id: "tui-1", created_at: "2026-01-01" },
+      ],
+      error: null,
+    })
+
+    const result = await getAllPendingActionsWithContext("user123")
+
+    expect(result).toHaveLength(1)
+    expect(result[0].repo_owner).toBe("acme")
+    expect(result[0].repo_name).toBe("api")
+    expect(result[0].issue_number).toBe(5)
+    expect(result[0].issue_title).toBe("Fix bug")
+    expect(result[0].tool).toBe("pushCode")
+  })
+
+  it("throws when getEnrolledRepos fails", async () => {
+    mockEq.mockResolvedValueOnce({ data: null, error: { message: "DB error" } })
+    await expect(getAllPendingActionsWithContext("user123")).rejects.toThrow("DB error")
+  })
+
+  it("throws when fetching runs fails", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    mockOr.mockResolvedValueOnce({ data: null, error: { message: "runs error" } })
+    await expect(getAllPendingActionsWithContext("user123")).rejects.toThrow("runs error")
   })
 })
