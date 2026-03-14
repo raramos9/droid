@@ -247,6 +247,12 @@ Renders a PR file diff with filename, +/- stats, and color-coded patch lines. Tr
 #### `InlineChat`
 Text input + message history for inline chat with droid. Calls `POST /api/chat` with context. User messages right-aligned, assistant messages left-aligned with amber border.
 
+#### `IssueCard`
+Renders a GitHub issue card with number, title, author, date. Shows "DROID RESPONDED" badge when run exists. Includes ThinkingToggle, Dispatch button, and InlineChat.
+
+#### `PrCard`
+Renders a GitHub PR card with number, title, branch info, date. Shows "DROID CREATED" badge. Includes Show files toggle (lazy-fetches FileDiff), Dispatch button, Merge button, and InlineChat.
+
 ### API Routes
 
 #### `POST /api/enroll`

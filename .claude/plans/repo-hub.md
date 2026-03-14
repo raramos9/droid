@@ -75,7 +75,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 7: Card Components
+## ~~Phase 7: Card Components~~
 
 20. Tests + implement `IssueCard` — issue title/number/author/date, "Droid responded" badge, droid comment, ThinkingToggle, Dispatch button, InlineChat
 21. Tests + implement `PrCard` — PR title/number/branch/date, "Droid created" badge, "Show files" toggle (lazy-fetch), FileDiff per file, Dispatch button, Merge button, InlineChat
