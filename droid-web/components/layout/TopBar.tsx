@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useCommandPalette } from "@/components/command-palette/CommandPaletteProvider"
 
 interface Crumb {
   label: string
@@ -19,6 +22,8 @@ function SearchIcon() {
 }
 
 export function TopBar({ crumbs }: Props) {
+  const { setOpen } = useCommandPalette()
+
   return (
     <header
       style={{
@@ -65,6 +70,7 @@ export function TopBar({ crumbs }: Props) {
       {/* Cmd+K trigger */}
       <button
         aria-label="Command palette"
+        onClick={() => setOpen(true)}
         style={{
           display: "flex",
           alignItems: "center",

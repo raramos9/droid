@@ -1,5 +1,15 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { TopBar } from "./TopBar"
+
+// Mock the command palette context
+const mockSetOpen = jest.fn()
+jest.mock("@/components/command-palette/CommandPaletteProvider", () => ({
+  useCommandPalette: () => ({ open: false, setOpen: mockSetOpen }),
+}))
+
+beforeEach(() => {
+  mockSetOpen.mockClear()
+})
 
 describe("TopBar", () => {
   it("renders the Cmd+K button", () => {
@@ -41,5 +51,11 @@ describe("TopBar", () => {
     const { container } = render(<TopBar />)
     const header = container.querySelector("header")
     expect(header).toHaveStyle({ height: "var(--topbar-height)" })
+  })
+
+  it("calls setOpen when Cmd+K button is clicked", () => {
+    render(<TopBar />)
+    fireEvent.click(screen.getByRole("button", { name: /command palette/i }))
+    expect(mockSetOpen).toHaveBeenCalledWith(true)
   })
 })
