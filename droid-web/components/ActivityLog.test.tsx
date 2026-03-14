@@ -25,7 +25,18 @@ const messages: Message[] = [
   },
 ]
 
+const messagesWithStringContent: Message[] = [
+  { role: "user", content: "Please fix this bug." as unknown as Message["content"] },
+  { role: "assistant", content: [{ type: "text", text: "On it." }] },
+]
+
 describe("ActivityLog", () => {
+  it("handles messages where content is a string instead of an array", () => {
+    render(<ActivityLog messages={messagesWithStringContent} />)
+    expect(screen.getByText("On it.")).toBeInTheDocument()
+  })
+
+
   it("renders text blocks from assistant messages", () => {
     render(<ActivityLog messages={messages} />)
     expect(screen.getByText("I will analyze this issue.")).toBeInTheDocument()

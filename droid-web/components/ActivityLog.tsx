@@ -5,11 +5,12 @@ interface Props {
 }
 
 export function ActivityLog({ messages }: Props) {
-  const textBlocks = messages.flatMap((msg) =>
-    msg.content.filter(
+  const textBlocks = messages.flatMap((msg) => {
+    if (typeof msg.content === "string") return []
+    return msg.content.filter(
       (block): block is { type: "text"; text: string } => block.type === "text"
     )
-  )
+  })
 
   if (textBlocks.length === 0) {
     return (
