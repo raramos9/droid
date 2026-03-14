@@ -47,7 +47,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 4: Merge Route
+## ~~Phase 4: Merge Route~~
 
 13. Tests for `POST /api/merge` — 401, 400 missing fields, success returns sha, 409 conflict handled
 14. Implement `POST /api/merge` — `octokit.pulls.merge({ owner, repo, pull_number })` using user's access token
