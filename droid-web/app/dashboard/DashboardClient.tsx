@@ -91,38 +91,73 @@ export function DashboardClient({ enrolledRepos }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && search()}
-          className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+          className="flex-1 px-3 py-2 text-sm font-data outline-none"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            color: "var(--text-pri)",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)" }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)" }}
         />
         <button
           onClick={search}
           disabled={loading}
-          className="rounded bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:opacity-50"
+          className="btn-amber px-4 py-2 disabled:opacity-40"
         >
           {loading ? "..." : "Search"}
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="font-data text-xs" style={{ color: "var(--red)" }}>
+          {error}
+        </p>
+      )}
 
       {pagedRepos.length > 0 && (
-        <ul className="divide-y divide-zinc-100 rounded border border-zinc-200">
-          {pagedRepos.map((repo) => {
+        <ul style={{ border: "1px solid var(--border)" }}>
+          {pagedRepos.map((repo, i) => {
             const enrolled = enrolledSet.has(repo.full_name)
             return (
-              <li key={repo.full_name} className="flex items-center gap-3 px-3 py-2">
-                <span className="flex-1 text-sm font-medium text-zinc-800 truncate">{repo.full_name}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${repo.private ? "bg-zinc-100 text-zinc-500" : "bg-blue-50 text-blue-600"}`}>
+              <li
+                key={repo.full_name}
+                className="flex items-center gap-3 px-3 py-2.5 transition-colors"
+                style={{
+                  background: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <span className="flex-1 font-data text-sm truncate" style={{ color: "var(--text-pri)" }}>
+                  {repo.full_name}
+                </span>
+                <span
+                  className="font-data text-xs px-1.5 py-0.5"
+                  style={{
+                    color: repo.private ? "var(--text-ter)" : "var(--blue)",
+                    border: `1px solid ${repo.private ? "var(--border)" : "var(--blue)"}`,
+                  }}
+                >
                   {repo.private ? "Private" : "Public"}
                 </span>
-                <span className="text-xs text-zinc-400 w-24 text-right shrink-0">
+                <span className="font-data text-xs w-24 text-right shrink-0" style={{ color: "var(--text-ter)" }}>
                   {repo.pushed_at ? new Date(repo.pushed_at).toLocaleDateString() : "—"}
                 </span>
                 {enrolled ? (
                   <>
-                    <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-700 font-medium">Enrolled</span>
+                    <span
+                      className="font-data text-xs px-2 py-0.5"
+                      style={{
+                        color: "var(--green)",
+                        border: "1px solid var(--green)",
+                      }}
+                    >
+                      Enrolled
+                    </span>
                     <Link
                       href={`/dashboard/${repo.owner.login}/${repo.name}`}
-                      className="text-xs text-zinc-500 hover:text-zinc-900"
+                      className="font-data text-xs transition-colors"
+                      style={{ color: "var(--accent)" }}
                     >
                       View activity →
                     </Link>
@@ -131,7 +166,24 @@ export function DashboardClient({ enrolledRepos }: Props) {
                   <button
                     onClick={() => enroll(repo)}
                     disabled={enrolling === repo.full_name}
-                    className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                    className="font-data text-xs px-3 py-1 uppercase tracking-wider transition-all disabled:opacity-40"
+                    style={{
+                      color: "var(--accent)",
+                      border: "1px solid var(--accent-dim)",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (enrolling !== repo.full_name) {
+                        e.currentTarget.style.background = "var(--accent)"
+                        e.currentTarget.style.color = "var(--bg)"
+                        e.currentTarget.style.borderColor = "var(--accent)"
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent"
+                      e.currentTarget.style.color = "var(--accent)"
+                      e.currentTarget.style.borderColor = "var(--accent-dim)"
+                    }}
                   >
                     {enrolling === repo.full_name ? "Enrolling..." : "Enroll"}
                   </button>
@@ -148,7 +200,12 @@ export function DashboardClient({ enrolledRepos }: Props) {
             <button
               key={i + 1}
               onClick={() => setPage(i + 1)}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${page === i + 1 ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}
+              className="font-data px-2.5 py-1 text-xs transition-colors"
+              style={{
+                background: page === i + 1 ? "var(--accent)" : "var(--surface-2)",
+                color: page === i + 1 ? "var(--bg)" : "var(--text-sec)",
+                border: "1px solid var(--border)",
+              }}
             >
               {i + 1}
             </button>

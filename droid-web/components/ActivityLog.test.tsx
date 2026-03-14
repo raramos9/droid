@@ -54,4 +54,12 @@ describe("ActivityLog", () => {
     // Two text blocks exist; confirm both render (no collision from unstable keys)
     expect(items).toHaveLength(2)
   })
+
+  it("renders a numbered counter for each message block", () => {
+    const { container } = render(<ActivityLog messages={messages} />)
+    const counters = container.querySelectorAll("[data-counter]")
+    expect(counters).toHaveLength(2)
+    expect(counters[0].textContent).toBe("[1]")
+    expect(counters[1].textContent).toBe("[2]")
+  })
 })

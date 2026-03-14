@@ -11,13 +11,27 @@ export default async function DashboardPage() {
   const repos = await getEnrolledRepos(installedBy)
 
   return (
-    <main className="min-h-screen bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white px-6 py-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-zinc-900">droid</h1>
-        <span className="text-sm text-zinc-500">{session.user.name}</span>
+    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
+      <header
+        className="px-6 py-4 flex items-center justify-between"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
+        <span className="font-display text-lg font-medium" style={{ color: "var(--text-pri)" }}>
+          dr<span style={{ color: "var(--accent)" }}>o</span>id
+        </span>
+        <span className="font-data text-xs" style={{ color: "var(--text-sec)" }}>
+          {session.user.name}
+        </span>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+        <h2
+          className="font-display text-sm font-medium uppercase tracking-widest"
+          style={{ color: "var(--text-ter)" }}
+        >
+          Repositories
+        </h2>
+
         <DashboardClient enrolledRepos={repos} />
       </div>
     </main>

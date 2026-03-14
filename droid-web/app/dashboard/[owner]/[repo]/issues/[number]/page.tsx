@@ -22,24 +22,37 @@ export default async function IssueDetailPage({ params }: Props) {
   const run = await getRunForIssue(owner, repo, issueNumber)
 
   return (
-    <main className="min-h-screen bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white px-6 py-4">
-        <nav className="text-sm text-zinc-500 space-x-1">
-          <Link href="/dashboard" className="hover:text-zinc-800">dashboard</Link>
-          <span>/</span>
-          <Link href={`/dashboard/${owner}/${repo}`} className="hover:text-zinc-800">{owner}/{repo}</Link>
-          <span>/</span>
-          <span className="text-zinc-900 font-medium">issue #{number}</span>
+    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
+      <header
+        className="px-6 py-4"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
+        <nav className="font-data text-xs flex items-center gap-2" style={{ color: "var(--text-ter)" }}>
+          <Link href="/dashboard" style={{ color: "var(--text-sec)" }}>droid</Link>
+          <span style={{ color: "var(--accent)" }}>&gt;</span>
+          <Link href={`/dashboard/${owner}/${repo}`} style={{ color: "var(--text-sec)" }}>
+            {owner}/{repo}
+          </Link>
+          <span style={{ color: "var(--accent)" }}>&gt;</span>
+          <span style={{ color: "var(--text-pri)" }}>issue #{number}</span>
         </nav>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
         {!run ? (
-          <p className="text-sm text-zinc-500">No agent run found for issue #{number}.</p>
+          <p
+            className="font-data text-sm cursor-blink"
+            style={{ color: "var(--text-ter)" }}
+          >
+            $ no agent run found for issue #{number}
+          </p>
         ) : (
           <>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-zinc-900">
+            <div className="flex items-center gap-4">
+              <h2
+                className="font-display text-2xl font-medium"
+                style={{ color: "var(--text-pri)" }}
+              >
                 {run.goal?.context?.title ?? `Issue #${number}`}
               </h2>
               <RunStatusBadge status={run.status} />
@@ -69,10 +82,17 @@ async function IssueDetailContent({
   const pendingActions = await getPendingActions(run.run_id)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {pendingActions.length > 0 && (
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wide">
+          <h3
+            className="font-data text-xs uppercase tracking-widest"
+            style={{
+              color: "var(--text-ter)",
+              paddingLeft: "8px",
+              borderLeft: "2px solid var(--accent)",
+            }}
+          >
             Pending approval
           </h3>
           {pendingActions.map((action) => (
@@ -82,24 +102,31 @@ async function IssueDetailContent({
       )}
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wide">
+        <h3
+          className="font-data text-xs uppercase tracking-widest"
+          style={{
+            color: "var(--text-ter)",
+            paddingLeft: "8px",
+            borderLeft: "2px solid var(--border)",
+          }}
+        >
           Activity log
         </h3>
         <ActivityLog messages={run.messages} />
       </section>
 
-      <section className="text-xs text-zinc-400 space-y-1">
-        <p>Run ID: <code>{run.run_id}</code></p>
-        <p>Iterations: {run.iteration}</p>
-        <p>Last updated: {new Date(run.updated_at).toLocaleString()}</p>
+      <section className="font-data text-xs space-y-1" style={{ color: "var(--text-ter)" }}>
+        <p>run_id: <span style={{ color: "var(--text-sec)" }}>{run.run_id}</span></p>
+        <p>iterations: <span style={{ color: "var(--text-sec)" }}>{run.iteration}</span></p>
+        <p>updated: <span style={{ color: "var(--text-sec)" }}>{new Date(run.updated_at).toLocaleString()}</span></p>
         <p>
           <a
             href={`https://github.com/${owner}/${repo}/issues/${issueNumber}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-zinc-600"
+            style={{ color: "var(--accent)", textDecoration: "underline" }}
           >
-            View on GitHub &rarr;
+            view on github &rarr;
           </a>
         </p>
       </section>
