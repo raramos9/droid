@@ -55,3 +55,38 @@ export interface EnrolledRepo {
   installed_by: string
   created_at: string
 }
+
+export interface GitHubIssue {
+  number: number
+  title: string
+  user: { login: string }
+  created_at: string
+  html_url: string
+  labels: Array<{ name: string; color: string }>
+  state: string
+}
+
+export interface GitHubPR {
+  number: number
+  title: string
+  user: { login: string }
+  created_at: string
+  html_url: string
+  head: { ref: string; sha: string }
+  base: { ref: string }
+  state: string
+  draft: boolean
+}
+
+export interface GitHubPRFile {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  patch?: string
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+}

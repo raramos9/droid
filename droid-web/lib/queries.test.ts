@@ -3,6 +3,7 @@ import {
   getRunsForRepo,
   getRunForIssue,
   getPendingActions,
+  getRunsMapByIssueNumber,
 } from "./queries"
 
 // Mock Supabase client
@@ -143,5 +144,56 @@ describe("getPendingActions", () => {
     const result = await getPendingActions("run-1")
 
     expect(result).toEqual(actions)
+  })
+})
+
+describe("getRunsMapByIssueNumber", () => {
+  it("maps runs by goal.context.issueNumber", async () => {
+    const runs = [
+      { run_id: "run-1", goal: { context: { issueNumber: 10 } }, status: "completed" },
+      { run_id: "run-2", goal: { context: { issueNumber: 20 } }, status: "running" },
+    ]
+    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+
+    const map = await getRunsMapByIssueNumber("acme", "api")
+
+    expect(map.get(10)).toEqual(runs[0])
+    expect(map.get(20)).toEqual(runs[1])
+    expect(map.size).toBe(2)
+  })
+
+  it("returns empty map when no runs exist", async () => {
+    mockOrder.mockResolvedValueOnce({ data: [], error: null })
+
+    const map = await getRunsMapByIssueNumber("acme", "api")
+
+    expect(map.size).toBe(0)
+  })
+
+  it("ignores runs without issueNumber in goal context", async () => {
+    const runs = [
+      { run_id: "run-1", goal: { context: { issueNumber: 10 } }, status: "completed" },
+      { run_id: "run-2", goal: { context: {} }, status: "running" },
+      { run_id: "run-3", goal: {}, status: "failed" },
+    ]
+    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+
+    const map = await getRunsMapByIssueNumber("acme", "api")
+
+    expect(map.size).toBe(1)
+    expect(map.get(10)).toEqual(runs[0])
+  })
+
+  it("keeps first run when multiple exist for same issue", async () => {
+    const runs = [
+      { run_id: "run-1", goal: { context: { issueNumber: 10 } }, status: "completed" },
+      { run_id: "run-2", goal: { context: { issueNumber: 10 } }, status: "running" },
+    ]
+    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+
+    const map = await getRunsMapByIssueNumber("acme", "api")
+
+    expect(map.size).toBe(1)
+    expect(map.get(10)?.run_id).toBe("run-1")
   })
 })

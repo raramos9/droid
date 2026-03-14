@@ -1,6 +1,21 @@
 import { supabase } from "./supabase"
 import type { AgentRun, EnrolledRepo, PendingAction } from "./types"
 
+export async function getRunsMapByIssueNumber(
+  owner: string,
+  repo: string
+): Promise<Map<number, AgentRun>> {
+  const runs = await getRunsForRepo(owner, repo)
+  const map = new Map<number, AgentRun>()
+  for (const run of runs) {
+    const issueNumber = run.goal?.context?.issueNumber
+    if (typeof issueNumber === "number" && !map.has(issueNumber)) {
+      map.set(issueNumber, run)
+    }
+  }
+  return map
+}
+
 export async function getEnrolledRepos(installedBy: string): Promise<EnrolledRepo[]> {
   const { data, error } = await supabase
     .from("enrolled_repos")
