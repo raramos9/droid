@@ -252,6 +252,9 @@ Requires session. Proxies to `{DROID_WORKER_URL}/dispatch` with Bearer auth. Bod
 #### `POST /api/merge`
 Requires session. Merges a PR via `octokit.pulls.merge`. Body: `{ owner, repo, pullNumber }`. Returns `{ ok, sha }` or 409 if not mergeable.
 
+#### `POST /api/chat`
+Requires session. Calls Anthropic API with system prompt including context (type/number/repo/summary). Body: `{ messages, context }`. Returns `{ role, content }`.
+
 #### `GET /api/github/repos`
 Requires session. Searches user repos via `octokit.search.repos` scoped to `user:{login}`. Returns `{ repos: GithubRepo[] }`.
 

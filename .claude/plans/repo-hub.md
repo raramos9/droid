@@ -56,7 +56,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 5: Chat Route
+## ~~Phase 5: Chat Route~~
 
 15. Tests for `POST /api/chat` — 401, 400 missing messages, mocks Anthropic fetch, returns assistant content, handles errors
 16. Implement `POST /api/chat` — raw fetch to Anthropic API, system prompt includes context (type/number/repo/summary), model `claude-sonnet-4-6`, max_tokens 1024
