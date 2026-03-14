@@ -21,8 +21,16 @@ function SearchIcon() {
   )
 }
 
+function MenuIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function TopBar({ crumbs }: Props) {
-  const { setOpen } = useCommandPalette()
+  const { setOpen, setMobileSidebarOpen } = useCommandPalette()
 
   return (
     <header
@@ -37,6 +45,28 @@ export function TopBar({ crumbs }: Props) {
         flexShrink: 0,
       }}
     >
+      {/* Hamburger — mobile only (hidden via CSS on desktop) */}
+      <button
+        className="hamburger-btn"
+        aria-label="Open sidebar"
+        onClick={() => setMobileSidebarOpen(true)}
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          height: 32,
+          borderRadius: "var(--radius-sm)",
+          border: "none",
+          background: "transparent",
+          color: "var(--text-secondary)",
+          cursor: "pointer",
+          marginRight: 8,
+          flexShrink: 0,
+        }}
+      >
+        <MenuIcon />
+      </button>
+
       {/* Breadcrumbs */}
       <nav
         aria-label="breadcrumb"

@@ -13,6 +13,16 @@ jest.mock("@/lib/hooks/useSidebarState", () => ({
   }),
 }))
 
+const mockSetMobileSidebarOpen = jest.fn()
+let mockMobileSidebarOpen = false
+
+jest.mock("@/components/command-palette/CommandPaletteProvider", () => ({
+  useCommandPalette: () => ({
+    mobileSidebarOpen: mockMobileSidebarOpen,
+    setMobileSidebarOpen: mockSetMobileSidebarOpen,
+  }),
+}))
+
 // Mock sub-components so Sidebar tests stay focused on shell behavior
 jest.mock("./SidebarNav", () => ({
   SidebarNav: ({ collapsed, repos, inboxCount }: { collapsed: boolean; repos: unknown[]; inboxCount: number }) => (
@@ -49,7 +59,9 @@ const defaultProps = {
 describe("Sidebar", () => {
   beforeEach(() => {
     mockCollapsed = false
+    mockMobileSidebarOpen = false
     mockToggle.mockClear()
+    mockSetMobileSidebarOpen.mockClear()
   })
 
   it("renders the droid logo link when expanded", () => {
@@ -128,5 +140,28 @@ describe("Sidebar", () => {
   it("shows username via SidebarUserMenu when expanded", () => {
     render(<Sidebar {...defaultProps} />)
     expect(screen.getByText("testuser")).toBeInTheDocument()
+  })
+
+  it("renders aside with data-sidebar attribute", () => {
+    const { container } = render(<Sidebar {...defaultProps} />)
+    expect(container.querySelector("[data-sidebar]")).toBeInTheDocument()
+  })
+
+  it("renders mobile backdrop when mobileSidebarOpen is true", () => {
+    mockMobileSidebarOpen = true
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByTestId("sidebar-backdrop")).toBeInTheDocument()
+  })
+
+  it("does not render mobile backdrop when mobileSidebarOpen is false", () => {
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.queryByTestId("sidebar-backdrop")).not.toBeInTheDocument()
+  })
+
+  it("calls setMobileSidebarOpen(false) when backdrop is clicked", () => {
+    mockMobileSidebarOpen = true
+    render(<Sidebar {...defaultProps} />)
+    fireEvent.click(screen.getByTestId("sidebar-backdrop"))
+    expect(mockSetMobileSidebarOpen).toHaveBeenCalledWith(false)
   })
 })

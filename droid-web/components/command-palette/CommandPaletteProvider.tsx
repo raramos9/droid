@@ -13,11 +13,15 @@ interface Repo {
 interface CommandPaletteContextValue {
   open: boolean
   setOpen: (open: boolean) => void
+  mobileSidebarOpen: boolean
+  setMobileSidebarOpen: (open: boolean) => void
 }
 
 const CommandPaletteContext = createContext<CommandPaletteContextValue>({
   open: false,
   setOpen: () => {},
+  mobileSidebarOpen: false,
+  setMobileSidebarOpen: () => {},
 })
 
 export function useCommandPalette() {
@@ -31,6 +35,7 @@ interface Props {
 
 export function CommandPaletteProvider({ repos, children }: Props) {
   const [open, setOpen] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const router = useRouter()
 
   const actions = buildActions({
@@ -82,7 +87,7 @@ export function CommandPaletteProvider({ repos, children }: Props) {
   }, [handleKeyDown])
 
   return (
-    <CommandPaletteContext.Provider value={{ open, setOpen }}>
+    <CommandPaletteContext.Provider value={{ open, setOpen, mobileSidebarOpen, setMobileSidebarOpen }}>
       {children}
       <CommandPalette open={open} onClose={() => setOpen(false)} actions={actions} />
     </CommandPaletteContext.Provider>

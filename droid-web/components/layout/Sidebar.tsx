@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useSidebarState } from "@/lib/hooks/useSidebarState"
+import { useCommandPalette } from "@/components/command-palette/CommandPaletteProvider"
 import { SidebarNav } from "./SidebarNav"
 import { SidebarUserMenu } from "./SidebarUserMenu"
 import { SidebarKeyboardHints } from "./SidebarKeyboardHints"
@@ -53,9 +54,25 @@ function ChevronRightIcon() {
 
 export function Sidebar({ user, repos, inboxCount }: Props) {
   const { collapsed, toggle } = useSidebarState()
+  const { mobileSidebarOpen, setMobileSidebarOpen } = useCommandPalette()
 
   return (
+    <>
+      {mobileSidebarOpen && (
+        <div
+          data-testid="sidebar-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 49,
+          }}
+        />
+      )}
     <aside
+      data-sidebar=""
+      className={mobileSidebarOpen ? "sidebar-mobile-open" : undefined}
       style={{
         width: collapsed ? "var(--sidebar-collapsed-width)" : "var(--sidebar-width)",
         transition: "width 200ms ease",
@@ -129,5 +146,6 @@ export function Sidebar({ user, repos, inboxCount }: Props) {
       {/* User footer */}
       <SidebarUserMenu user={user} collapsed={collapsed} />
     </aside>
+    </>
   )
 }

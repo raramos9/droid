@@ -3,12 +3,19 @@ import { TopBar } from "./TopBar"
 
 // Mock the command palette context
 const mockSetOpen = jest.fn()
+const mockSetMobileSidebarOpen = jest.fn()
 jest.mock("@/components/command-palette/CommandPaletteProvider", () => ({
-  useCommandPalette: () => ({ open: false, setOpen: mockSetOpen }),
+  useCommandPalette: () => ({
+    open: false,
+    setOpen: mockSetOpen,
+    mobileSidebarOpen: false,
+    setMobileSidebarOpen: mockSetMobileSidebarOpen,
+  }),
 }))
 
 beforeEach(() => {
   mockSetOpen.mockClear()
+  mockSetMobileSidebarOpen.mockClear()
 })
 
 describe("TopBar", () => {
@@ -57,5 +64,16 @@ describe("TopBar", () => {
     render(<TopBar />)
     fireEvent.click(screen.getByRole("button", { name: /command palette/i }))
     expect(mockSetOpen).toHaveBeenCalledWith(true)
+  })
+
+  it("renders a hamburger button for mobile", () => {
+    render(<TopBar />)
+    expect(screen.getByRole("button", { name: /open sidebar/i })).toBeInTheDocument()
+  })
+
+  it("calls setMobileSidebarOpen(true) when hamburger is clicked", () => {
+    render(<TopBar />)
+    fireEvent.click(screen.getByRole("button", { name: /open sidebar/i }))
+    expect(mockSetMobileSidebarOpen).toHaveBeenCalledWith(true)
   })
 })
