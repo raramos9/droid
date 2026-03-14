@@ -33,7 +33,7 @@ export async function getRunForIssue(
     .select("*")
     .eq("repo_owner", owner)
     .eq("repo_name", repo)
-    .filter("goal->>context", "cs", `{"issueNumber":${issueNumber}}`)
+    .filter("goal->context", "cs", `{"issueNumber":${issueNumber}}`)
     .order("updated_at", { ascending: false })
     .limit(1)
     .single()

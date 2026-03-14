@@ -104,7 +104,7 @@ describe("getRunForIssue", () => {
 
     expect(mockFrom).toHaveBeenCalledWith("agent_runs")
     expect(mockFilter).toHaveBeenCalledWith(
-      "goal->>context",
+      "goal->context",
       "cs",
       expect.stringContaining("42")
     )
