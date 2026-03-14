@@ -113,4 +113,47 @@ describe("PrCard", () => {
     render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
     expect(screen.getByText(/ask droid anything/)).toBeInTheDocument()
   })
+
+  it("dispatches droid on button click", async () => {
+    render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
+    fireEvent.click(screen.getByText("Dispatch droid"))
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/dispatch",
+        expect.objectContaining({ method: "POST" })
+      )
+      expect(screen.getByText("Dispatched")).toBeInTheDocument()
+    })
+  })
+
+  it("hides files when toggle is clicked again", async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([
+        { filename: "src/index.ts", status: "modified", additions: 5, deletions: 2, patch: "+foo" },
+      ]),
+    })
+
+    render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
+    fireEvent.click(screen.getByText("Show files"))
+
+    await waitFor(() => {
+      expect(screen.getByText("src/index.ts")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText("Hide files"))
+    expect(screen.queryByText("src/index.ts")).not.toBeInTheDocument()
+  })
+
+  it("handles merge network error", async () => {
+    ;(global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"))
+
+    render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
+    fireEvent.click(screen.getByText("Merge"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeInTheDocument()
+    })
+  })
 })

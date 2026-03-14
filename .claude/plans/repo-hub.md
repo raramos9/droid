@@ -102,7 +102,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 10: Polish
+## ~~Phase 10: Polish~~
 
 26. Loading skeletons — `$ loading issues...` with cursor-blink
 27. Error states — `$ error: {message}` in `color: var(--error)`

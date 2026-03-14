@@ -348,7 +348,7 @@ DROID_RESUME_API_KEY=...       Must match RESUME_API_KEY in worker
 
 ### Tests
 
-80 tests, all passing. Coverage: ~97% statements/lines/functions, ~81% branches.
+191 tests, all passing. Coverage: 92.67% statements, 85.99% branches, 82.41% functions, 93.03% lines.
 
 ### Types added (lib/types.ts)
 
