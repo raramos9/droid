@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getRunsForRepo } from "@/lib/queries"
 import { RepoTabs } from "@/components/RepoTabs"
-import { AppHeader } from "@/components/AppHeader"
+import { TopBar } from "@/components/layout/TopBar"
 import type { AgentRun } from "@/lib/types"
 
 interface Props {
@@ -28,14 +28,11 @@ export default async function RepoDetailPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
-      <AppHeader
-        crumbs={[{ label: `${owner}/${repo}` }]}
-      />
-
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
+    <>
+      <TopBar crumbs={[{ label: `${owner}/${repo}` }]} />
+      <div style={{ padding: "32px 24px", maxWidth: 720, width: "100%" }}>
         <RepoTabs owner={owner} repo={repo} runsMap={runsMap} />
       </div>
-    </main>
+    </>
   )
 }

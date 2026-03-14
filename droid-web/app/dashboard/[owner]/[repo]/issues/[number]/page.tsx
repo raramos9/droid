@@ -5,8 +5,7 @@ import { parseIssueNumber } from "@/lib/parse-issue-number"
 import { ActivityLog } from "@/components/ActivityLog"
 import { PendingActionPanel } from "@/components/PendingActionPanel"
 import { RunStatusBadge } from "@/components/RunStatusBadge"
-import { AppHeader } from "@/components/AppHeader"
-import Link from "next/link"
+import { TopBar } from "@/components/layout/TopBar"
 
 interface Props {
   params: Promise<{ owner: string; repo: string; number: string }>
@@ -23,28 +22,36 @@ export default async function IssueDetailPage({ params }: Props) {
   const run = await getRunForIssue(owner, repo, issueNumber)
 
   return (
-    <main className="min-h-screen" style={{ background: "var(--bg)" }}>
-      <AppHeader
+    <>
+      <TopBar
         crumbs={[
           { label: `${owner}/${repo}`, href: `/dashboard/${owner}/${repo}` },
           { label: `issue #${number}` },
         ]}
       />
 
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+      <div style={{ padding: "32px 24px", maxWidth: 720, width: "100%" }}>
         {!run ? (
           <p
-            className="text-sm"
-            style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-sans)",
+            }}
           >
             No agent run found for issue #{number}
           </p>
         ) : (
           <>
-            <div className="flex items-center gap-4">
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
               <h2
-                className="text-2xl font-semibold"
-                style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
+                  color: "var(--text-primary)",
+                  fontFamily: "var(--font-sans)",
+                  margin: 0,
+                }}
               >
                 {run.goal?.context?.title ?? `Issue #${number}`}
               </h2>
@@ -55,7 +62,7 @@ export default async function IssueDetailPage({ params }: Props) {
           </>
         )}
       </div>
-    </main>
+    </>
   )
 }
 
@@ -75,32 +82,57 @@ async function IssueDetailContent({
   const pendingActions = await getPendingActions(run.run_id)
 
   return (
-    <div className="space-y-8">
+    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       {pendingActions.length > 0 && (
-        <section className="space-y-3">
-          <h3
-            className="text-sm font-medium"
-            style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
+        <section>
+          <p
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 500,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "var(--text-tertiary)",
+              fontFamily: "var(--font-sans)",
+              marginBottom: 12,
+            }}
           >
             Pending approval
-          </h3>
-          {pendingActions.map((action) => (
-            <PendingActionPanel key={action.id} action={action} />
-          ))}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {pendingActions.map((action) => (
+              <PendingActionPanel key={action.id} action={action} />
+            ))}
+          </div>
         </section>
       )}
 
-      <section className="space-y-3">
-        <h3
-          className="text-sm font-medium"
-          style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
+      <section>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 500,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-sans)",
+            marginBottom: 12,
+          }}
         >
           Activity log
-        </h3>
+        </p>
         <ActivityLog messages={run.messages} />
       </section>
 
-      <section className="text-xs space-y-1 font-mono" style={{ color: "var(--text-tertiary)" }}>
+      <section
+        style={{
+          fontSize: "0.75rem",
+          fontFamily: "var(--font-mono)",
+          color: "var(--text-tertiary)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
         <p>run_id: <span style={{ color: "var(--text-secondary)" }}>{run.run_id}</span></p>
         <p>iterations: <span style={{ color: "var(--text-secondary)" }}>{run.iteration}</span></p>
         <p>updated: <span style={{ color: "var(--text-secondary)" }}>{new Date(run.updated_at).toLocaleString()}</span></p>
