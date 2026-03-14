@@ -95,4 +95,42 @@ describe("IssueCard", () => {
     render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
     expect(screen.getByText(/ask droid anything/)).toBeInTheDocument()
   })
+
+  it("fetches droid comment when run exists", async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([{ body: "I analyzed the issue and found..." }]),
+    })
+
+    render(<IssueCard issue={mockIssue} run={mockRun} owner="acme" repo="api" />)
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/github/issues/42/comments")
+      )
+    })
+  })
+
+  it("displays droid comment text when fetched", async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([{ body: "I analyzed the issue and found the bug." }]),
+    })
+
+    render(<IssueCard issue={mockIssue} run={mockRun} owner="acme" repo="api" />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/I analyzed the issue/)).toBeInTheDocument()
+    })
+  })
+
+  it("does not fetch comments when run is null", () => {
+    render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
+
+    const fetchCalls = (global.fetch as jest.Mock).mock.calls
+    const commentCalls = fetchCalls.filter(
+      (call: unknown[]) => typeof call[0] === "string" && call[0].includes("/comments")
+    )
+    expect(commentCalls).toHaveLength(0)
+  })
 })

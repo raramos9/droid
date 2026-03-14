@@ -93,7 +93,7 @@ For chat, the droid-web API route calls Anthropic via raw `fetch` (no new depend
 
 ---
 
-## Phase 9: Droid Comment Fetching
+## ~~Phase 9: Droid Comment Fetching~~
 
 24. Tests + implement `GET /api/github/issues/[number]/comments` — filters comments by `DROID_BOT_USERNAME`
 25. Wire lazy-fetch into `IssueCard` — fetch droid comment on mount when run exists

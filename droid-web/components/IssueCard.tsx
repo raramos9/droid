@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { GitHubIssue, AgentRun } from "@/lib/types"
 import { ThinkingToggle } from "./ThinkingToggle"
 import { InlineChat } from "./InlineChat"
@@ -14,6 +14,22 @@ interface Props {
 
 export function IssueCard({ issue, run, owner, repo }: Props) {
   const [dispatchState, setDispatchState] = useState<"idle" | "loading" | "done">("idle")
+  const [droidComment, setDroidComment] = useState<string | null>(null)
+  const [showFullComment, setShowFullComment] = useState(false)
+
+  useEffect(() => {
+    if (!run) return
+    fetch(`/api/github/issues/${issue.number}/comments?owner=${owner}&repo=${repo}`)
+      .then((res) => res.ok ? res.json() : [])
+      .then((comments: Array<{ body: string }>) => {
+        if (comments.length > 0) {
+          setDroidComment(comments[0].body)
+        } else {
+          setDroidComment("")
+        }
+      })
+      .catch(() => setDroidComment(""))
+  }, [run, issue.number, owner, repo])
 
   const handleDispatch = async () => {
     setDispatchState("loading")
@@ -76,6 +92,32 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
       )}
 
       {run && <ThinkingToggle messages={run.messages} />}
+
+      {droidComment && (
+        <div>
+          <p
+            className="text-sm italic"
+            style={{
+              color: "var(--text-sec)",
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: showFullComment ? undefined : 3,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {droidComment}
+          </p>
+          {droidComment.split("\n").length > 3 && !showFullComment && (
+            <button
+              onClick={() => setShowFullComment(true)}
+              className="font-data text-xs mt-1"
+              style={{ color: "var(--accent)" }}
+            >
+              Show more
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <button

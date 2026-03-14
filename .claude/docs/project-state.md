@@ -285,6 +285,9 @@ Requires session. Params: `owner`, `repo`. Fetches open PRs via `octokit.pulls.l
 #### `GET /api/github/prs/[number]/files`
 Requires session. Params: `owner`, `repo`, `number` (path param). Fetches PR files via `octokit.pulls.listFiles`.
 
+#### `GET /api/github/issues/[number]/comments`
+Requires session. Params: `owner`, `repo`, `number` (path param). Fetches issue comments and filters to only droid bot comments (`getdroid[bot]`).
+
 ### Queries (`lib/queries.ts`)
 
 | Function | Table | Notes |
