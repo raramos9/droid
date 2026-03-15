@@ -22,6 +22,11 @@ vi.mock("../../src/lib/cloneRepo", () => ({
   cloneRepo: mockCloneRepo,
 }));
 
+const mockLoadRepoConfig = vi.hoisted(() => vi.fn().mockResolvedValue({ userConfig: "", repoOverrides: "" }));
+vi.mock("../../src/agent/config", () => ({
+  loadRepoConfig: mockLoadRepoConfig,
+}));
+
 import { getSandbox } from "@cloudflare/sandbox";
 import { cloneRepo } from "../../src/lib/cloneRepo";
 import { runDroidAgent } from "../../src/harness/index";
@@ -68,6 +73,7 @@ describe("runDroidAgent", () => {
     expect(mockRunAgent).toHaveBeenCalledWith(
       pushGoal,
       expect.objectContaining({ anthropicApiKey: "ak" }),
+      expect.anything(),
     );
   });
 
@@ -111,7 +117,7 @@ describe("runDroidAgent", () => {
   it("works for pull_request goal", async () => {
     mockRunAgent.mockResolvedValueOnce({ ...completedRun, goal: prGoal });
     await runDroidAgent(prGoal, env);
-    expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything());
+    expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything(), expect.anything());
   });
 
   it("calls cloneRepo with sandbox, owner, repo, GITHUB_TOKEN, and branch before runAgent", async () => {
@@ -137,5 +143,30 @@ describe("runDroidAgent", () => {
     expect(result.status).toBe("failed");
     expect(result.error).toContain("clone failed");
     expect(mockSandbox.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("calls loadRepoConfig with owner, repo, and supabase creds", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockLoadRepoConfig).toHaveBeenCalledWith(
+      "acme",
+      "repo",
+      "https://test.supabase.co",
+      "svc-key",
+    );
+  });
+
+  it("passes composed systemPrompt to runAgent when config is loaded", async () => {
+    mockLoadRepoConfig.mockResolvedValueOnce({ userConfig: "my rules", repoOverrides: "" });
+    await runDroidAgent(pushGoal, env);
+    const opts = mockRunAgent.mock.calls[0][2];
+    expect(opts.systemPrompt).toContain("my rules");
+  });
+
+  it("falls back gracefully when loadRepoConfig throws", async () => {
+    mockLoadRepoConfig.mockRejectedValueOnce(new Error("supabase down"));
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("completed");
+    const opts = mockRunAgent.mock.calls[0][2];
+    expect(opts.systemPrompt).toBeUndefined();
   });
 });

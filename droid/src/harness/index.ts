@@ -2,6 +2,8 @@ import { getSandbox } from "@cloudflare/sandbox";
 import { Octokit } from "@octokit/rest";
 import { runAgent } from "../agent/index";
 import { loadCheckpoint } from "../agent/checkpoint";
+import { loadRepoConfig } from "../agent/config";
+import { buildSystemPrompt } from "../agent/prompt";
 import { cloneRepo } from "../lib/cloneRepo";
 import type { Goal, AgentRun, MessageParam } from "../types/agent";
 import type { Env } from "../types/env";
@@ -34,6 +36,19 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
     const branch = ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : undefined;
     await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, env.GITHUB_TOKEN, branch);
 
+    let systemPrompt: string | undefined;
+    try {
+      const repoConfig = await loadRepoConfig(
+        goal.repo.owner,
+        goal.repo.name,
+        env.SUPABASE_URL,
+        env.SUPABASE_SERVICE_KEY,
+      );
+      systemPrompt = buildSystemPrompt(repoConfig.userConfig, repoConfig.repoOverrides);
+    } catch (configErr) {
+      console.error("loadRepoConfig failed, falling back to base prompt:", configErr);
+    }
+
     const ctx = {
       sandbox,
       octokit,
@@ -41,9 +56,8 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
       supabaseUrl: env.SUPABASE_URL,
       supabaseKey: env.SUPABASE_SERVICE_KEY,
     };
-    return existingRun
-      ? await runAgent(goal, ctx, { existingRun })
-      : await runAgent(goal, ctx);
+    const agentOpts = { systemPrompt, ...(existingRun && { existingRun }) };
+    return await runAgent(goal, ctx, agentOpts);
   } catch (error) {
     return {
       runId: resumeOpts.existingRunId ?? crypto.randomUUID(),
@@ -52,7 +66,7 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
       messages: [],
       iteration: 0,
       artifacts: [],
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : String(error),
     };
   } finally {
     await sandbox.destroy();

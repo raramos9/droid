@@ -79,7 +79,7 @@ async function executeToolCalls(
 export async function runAgent(
   goal: Goal,
   ctx: AgentContext,
-  opts: { existingRun?: AgentRun } = {},
+  opts: { existingRun?: AgentRun; systemPrompt?: string } = {},
 ): Promise<AgentRun> {
   const anthropic = new Anthropic({ apiKey: ctx.anthropicApiKey });
   const tools = buildAllTools(ctx.sandbox, ctx.octokit);
@@ -95,7 +95,7 @@ export async function runAgent(
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 8192,
-        system: SYSTEM_PROMPT,
+        system: opts.systemPrompt ?? SYSTEM_PROMPT,
         tools: toolDefs as Parameters<typeof anthropic.messages.create>[0]["tools"],
         messages: run.messages,
       });
