@@ -125,6 +125,12 @@ describe("runDroidAgent", () => {
     expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", undefined);
   });
 
+  it("does not pass a branch for tag push refs", async () => {
+    const tagGoal = { ...pushGoal, context: { sha: "abc123", ref: "refs/tags/v1.0.0" } };
+    await runDroidAgent(tagGoal, env);
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", undefined);
+  });
+
   it("returns failed run and destroys sandbox when cloneRepo throws", async () => {
     mockCloneRepo.mockRejectedValueOnce(new Error("clone failed: auth error"));
     const result = await runDroidAgent(pushGoal, env);

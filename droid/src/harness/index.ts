@@ -30,10 +30,8 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
 
   try {
     // For push events, clone the specific branch that was pushed to
-    const branch =
-      goal.type === "push" && typeof goal.context.ref === "string"
-        ? goal.context.ref.replace(/^refs\/heads\//, "")
-        : undefined;
+    const ref = goal.type === "push" && typeof goal.context.ref === "string" ? goal.context.ref : "";
+    const branch = ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : undefined;
     await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, env.GITHUB_TOKEN, branch);
 
     const ctx = {
