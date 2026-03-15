@@ -5,6 +5,7 @@ export async function cloneRepo(
   owner: string,
   repo: string,
   token: string,
+  branch?: string,
 ): Promise<void> {
   // Write credentials file so the token never appears in a logged exec command
   await sandbox.writeFile(
@@ -19,8 +20,9 @@ export async function cloneRepo(
     throw new Error(`Clone failed: could not configure git credential helper: ${helperResult.stderr}`);
   }
 
+  const branchFlag = branch ? ` -b ${branch}` : "";
   const cloneResult = await sandbox["exec"](
-    `git clone https://github.com/${owner}/${repo}.git /workspace/repo`,
+    `git clone${branchFlag} https://github.com/${owner}/${repo}.git /workspace/repo`,
   );
   if (cloneResult.exitCode !== 0) {
     throw new Error(`Clone failed: ${cloneResult.stderr}`);

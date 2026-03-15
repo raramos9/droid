@@ -114,15 +114,15 @@ describe("runDroidAgent", () => {
     expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything());
   });
 
-  it("calls cloneRepo with sandbox, owner, repo, and GITHUB_TOKEN before runAgent", async () => {
+  it("calls cloneRepo with sandbox, owner, repo, GITHUB_TOKEN, and branch before runAgent", async () => {
     await runDroidAgent(pushGoal, env);
-    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok");
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", "main");
     expect(mockCloneRepo).toHaveBeenCalledBefore(mockRunAgent as any);
   });
 
-  it("clones repo for pull_request goal too", async () => {
+  it("clones repo for pull_request goal without a branch", async () => {
     await runDroidAgent(prGoal, env);
-    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok");
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", undefined);
   });
 
   it("returns failed run and destroys sandbox when cloneRepo throws", async () => {
