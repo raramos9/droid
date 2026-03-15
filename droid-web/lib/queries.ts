@@ -1,5 +1,20 @@
 import { supabase } from "./supabase"
-import type { AgentRun, EnrolledRepo, PendingAction } from "./types"
+import type { AgentRun, EnrolledRepo, PendingAction, PendingActionWithContext } from "./types"
+
+export async function getRunsMapByIssueNumber(
+  owner: string,
+  repo: string
+): Promise<Map<number, AgentRun>> {
+  const runs = await getRunsForRepo(owner, repo)
+  const map = new Map<number, AgentRun>()
+  for (const run of runs) {
+    const issueNumber = run.goal?.context?.issueNumber
+    if (typeof issueNumber === "number" && !map.has(issueNumber)) {
+      map.set(issueNumber, run)
+    }
+  }
+  return map
+}
 
 export async function getEnrolledRepos(installedBy: string): Promise<EnrolledRepo[]> {
   const { data, error } = await supabase
@@ -33,7 +48,7 @@ export async function getRunForIssue(
     .select("*")
     .eq("repo_owner", owner)
     .eq("repo_name", repo)
-    .filter("goal->>context", "cs", `{"issueNumber":${issueNumber}}`)
+    .filter("goal->context", "cs", `{"issueNumber":${issueNumber}}`)
     .order("updated_at", { ascending: false })
     .limit(1)
     .single()
@@ -44,6 +59,76 @@ export async function getRunForIssue(
   }
 
   return data as AgentRun
+}
+
+export async function getPendingActionsCount(installedBy: string): Promise<number> {
+  const repos = await getEnrolledRepos(installedBy)
+  if (!repos.length) return 0
+
+  const orFilter = repos
+    .map((r) => `and(repo_owner.eq.${r.owner},repo_name.eq.${r.repo})`)
+    .join(",")
+
+  const { data: runs, error: runsError } = await supabase
+    .from("agent_runs")
+    .select("run_id")
+    .or(orFilter)
+
+  if (runsError) throw new Error(runsError.message)
+  if (!runs?.length) return 0
+
+  const runIds = runs.map((r) => r.run_id)
+
+  const { count, error: countError } = await supabase
+    .from("pending_actions")
+    .select("id", { count: "exact", head: true })
+    .in("run_id", runIds)
+    .eq("status", "pending")
+
+  if (countError) throw new Error(countError.message)
+  return count ?? 0
+}
+
+export async function getAllPendingActionsWithContext(
+  installedBy: string
+): Promise<PendingActionWithContext[]> {
+  const repos = await getEnrolledRepos(installedBy)
+  if (!repos.length) return []
+
+  const orFilter = repos
+    .map((r) => `and(repo_owner.eq.${r.owner},repo_name.eq.${r.repo})`)
+    .join(",")
+
+  const { data: runs, error: runsError } = await supabase
+    .from("agent_runs")
+    .select("run_id, repo_owner, repo_name, goal")
+    .or(orFilter)
+
+  if (runsError) throw new Error(runsError.message)
+  if (!runs?.length) return []
+
+  const runIds = runs.map((r) => r.run_id)
+  const runMap = new Map(runs.map((r) => [r.run_id, r]))
+
+  const { data: actions, error: actionsError } = await supabase
+    .from("pending_actions")
+    .select("*")
+    .in("run_id", runIds)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+
+  if (actionsError) throw new Error(actionsError.message)
+
+  return (actions ?? []).map((action) => {
+    const run = runMap.get(action.run_id)
+    return {
+      ...action,
+      repo_owner: run?.repo_owner ?? "",
+      repo_name: run?.repo_name ?? "",
+      issue_number: run?.goal?.context?.issueNumber,
+      issue_title: run?.goal?.context?.title,
+    } as PendingActionWithContext
+  })
 }
 
 export async function getPendingActions(runId: string): Promise<PendingAction[]> {

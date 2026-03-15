@@ -47,6 +47,19 @@ export interface PendingAction {
   created_at: string
 }
 
+export interface Repo {
+  full_name: string
+  owner: { login: string }
+  name: string
+  private: boolean
+  permissions?: { admin: boolean }
+  pushed_at?: string
+  language: string | null
+  description: string | null
+  fork: boolean
+  parent: { full_name: string } | null
+}
+
 export interface EnrolledRepo {
   id: number
   owner: string
@@ -54,4 +67,49 @@ export interface EnrolledRepo {
   webhook_id: number
   installed_by: string
   created_at: string
+}
+
+export interface GitHubIssue {
+  number: number
+  title: string
+  user: { login: string }
+  created_at: string
+  html_url: string
+  labels: Array<{ name: string; color: string }>
+  state: string
+  comments: number
+}
+
+export interface GitHubPR {
+  number: number
+  title: string
+  user: { login: string }
+  created_at: string
+  html_url: string
+  head: { ref: string; sha: string }
+  base: { ref: string }
+  state: string
+  draft: boolean
+  comments: number
+  labels: Array<{ name: string; color: string }>
+}
+
+export interface GitHubPRFile {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  patch?: string
+}
+
+export interface PendingActionWithContext extends PendingAction {
+  repo_owner: string
+  repo_name: string
+  issue_number?: number
+  issue_title?: string
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
 }

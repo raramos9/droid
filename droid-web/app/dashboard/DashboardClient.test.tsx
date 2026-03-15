@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { DashboardClient } from "./DashboardClient"
-import type { EnrolledRepo } from "@/lib/types"
+import type { EnrolledRepo, Repo } from "@/lib/types"
 
 const mockFetch = jest.fn()
 global.fetch = mockFetch
@@ -19,13 +19,18 @@ const enrolledRepo: EnrolledRepo = {
   created_at: "2024-01-01T00:00:00Z",
 }
 
-function makeRepo(name: string, ownerLogin = "testuser", isPrivate = false) {
+function makeRepo(name: string, ownerLogin = "testuser", isPrivate = false, overrides: Partial<Repo> = {}): Repo {
   return {
     full_name: `${ownerLogin}/${name}`,
     owner: { login: ownerLogin },
     name,
     private: isPrivate,
     pushed_at: "2024-01-15T10:00:00Z",
+    language: null,
+    description: null,
+    fork: false,
+    parent: null,
+    ...overrides,
   }
 }
 
@@ -42,23 +47,23 @@ describe("DashboardClient", () => {
     render(<DashboardClient enrolledRepos={[]} />)
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledWith("/api/github/repos"))
-    await waitFor(() => expect(screen.getByText("testuser/my-repo")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("my-repo")).toBeInTheDocument())
   })
 
-  it("shows repo name, visibility badge, and last updated", async () => {
+  it("shows repo name and visibility badge", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve([
-        makeRepo("public-repo", "testuser", false),
-        makeRepo("private-repo", "testuser", true),
-      ]),
+      json: () =>
+        Promise.resolve([
+          makeRepo("public-repo", "testuser", false),
+          makeRepo("private-repo", "testuser", true),
+        ]),
     })
     render(<DashboardClient enrolledRepos={[]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/public-repo")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("public-repo")).toBeInTheDocument())
     expect(screen.getByText("Public")).toBeInTheDocument()
     expect(screen.getByText("Private")).toBeInTheDocument()
-    expect(screen.getAllByText(/1\/15\/2024/i).length).toBeGreaterThan(0)
   })
 
   it("shows Enrolled badge and View activity link for enrolled repos", async () => {
@@ -68,7 +73,7 @@ describe("DashboardClient", () => {
     })
     render(<DashboardClient enrolledRepos={[enrolledRepo]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/enrolled-repo")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("enrolled-repo")).toBeInTheDocument())
     expect(screen.getByText("Enrolled")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /view activity/i })).toHaveAttribute(
       "href",
@@ -88,56 +93,46 @@ describe("DashboardClient", () => {
     expect(screen.queryByText("Enrolled")).toBeNull()
   })
 
-  it("filters repos client-side on search without extra fetch", async () => {
+  it("filters repos live as user types without button click", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([makeRepo("my-api"), makeRepo("my-frontend")]),
     })
     render(<DashboardClient enrolledRepos={[]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/my-api")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("my-api")).toBeInTheDocument())
 
-    fireEvent.change(screen.getByPlaceholderText(/search your repos/i), { target: { value: "api" } })
-    fireEvent.click(screen.getByRole("button", { name: /search/i }))
+    fireEvent.change(screen.getByPlaceholderText(/find a repository/i), { target: { value: "api" } })
 
-    expect(screen.getByText("testuser/my-api")).toBeInTheDocument()
-    expect(screen.queryByText("testuser/my-frontend")).not.toBeInTheDocument()
+    expect(screen.getByText("my-api")).toBeInTheDocument()
+    expect(screen.queryByText("my-frontend")).not.toBeInTheDocument()
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it("resets to full list when search query is cleared", async () => {
+  it("resets to full list when filter is cleared", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve([makeRepo("my-api"), makeRepo("my-frontend")]),
     })
     render(<DashboardClient enrolledRepos={[]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/my-api")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("my-api")).toBeInTheDocument())
 
-    fireEvent.change(screen.getByPlaceholderText(/search your repos/i), { target: { value: "api" } })
-    fireEvent.click(screen.getByRole("button", { name: /search/i }))
-    expect(screen.queryByText("testuser/my-frontend")).not.toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText(/find a repository/i), { target: { value: "api" } })
+    expect(screen.queryByText("my-frontend")).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByPlaceholderText(/search your repos/i), { target: { value: "" } })
-    fireEvent.click(screen.getByRole("button", { name: /search/i }))
-    expect(screen.getByText("testuser/my-frontend")).toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText(/find a repository/i), { target: { value: "" } })
+    expect(screen.getByText("my-frontend")).toBeInTheDocument()
   })
 
-  it("filters on Enter key press", async () => {
+  it("shows section heading 'All repositories'", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve([makeRepo("my-api"), makeRepo("my-frontend")]),
+      json: () => Promise.resolve([makeRepo("a-repo")]),
     })
     render(<DashboardClient enrolledRepos={[]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/my-api")).toBeInTheDocument())
-
-    const input = screen.getByPlaceholderText(/search your repos/i)
-    fireEvent.change(input, { target: { value: "api" } })
-    fireEvent.keyDown(input, { key: "Enter" })
-
-    expect(screen.getByText("testuser/my-api")).toBeInTheDocument()
-    expect(screen.queryByText("testuser/my-frontend")).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/all repositories/i)).toBeInTheDocument())
   })
 
   it("shows pagination buttons when repos exceed 20", async () => {
@@ -145,10 +140,10 @@ describe("DashboardClient", () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(repos) })
     render(<DashboardClient enrolledRepos={[]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/repo-1")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("repo-1")).toBeInTheDocument())
     expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument()
-    expect(screen.queryByText("testuser/repo-21")).not.toBeInTheDocument()
+    expect(screen.queryByText("repo-21")).not.toBeInTheDocument()
   })
 
   it("navigates to page 2 and shows correct repos", async () => {
@@ -156,11 +151,11 @@ describe("DashboardClient", () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(repos) })
     render(<DashboardClient enrolledRepos={[]} />)
 
-    await waitFor(() => expect(screen.getByText("testuser/repo-1")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("repo-1")).toBeInTheDocument())
     fireEvent.click(screen.getByRole("button", { name: "2" }))
 
-    expect(screen.getByText("testuser/repo-21")).toBeInTheDocument()
-    expect(screen.queryByText("testuser/repo-1")).not.toBeInTheDocument()
+    expect(screen.getByText("repo-21")).toBeInTheDocument()
+    expect(screen.queryByText("repo-1")).not.toBeInTheDocument()
   })
 
   it("triggers enroll and calls router.refresh() on success", async () => {
@@ -208,5 +203,39 @@ describe("DashboardClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^enroll$/i }))
     await waitFor(() => expect(screen.getByText(/already enrolled/i)).toBeInTheDocument())
+  })
+
+  it("shows language and description when repo has them", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve([
+          makeRepo("ts-repo", "testuser", false, {
+            language: "TypeScript",
+            description: "A TypeScript project",
+          }),
+        ]),
+    })
+    render(<DashboardClient enrolledRepos={[]} />)
+
+    await waitFor(() => expect(screen.getByText("ts-repo")).toBeInTheDocument())
+    expect(screen.getByText("TypeScript")).toBeInTheDocument()
+    expect(screen.getByText("A TypeScript project")).toBeInTheDocument()
+  })
+
+  it("shows empty grid when no repos match filter", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([makeRepo("my-api")]),
+    })
+    render(<DashboardClient enrolledRepos={[]} />)
+
+    await waitFor(() => expect(screen.getByText("my-api")).toBeInTheDocument())
+
+    fireEvent.change(screen.getByPlaceholderText(/find a repository/i), {
+      target: { value: "zzznomatch" },
+    })
+
+    expect(screen.getByTestId("repo-grid-empty")).toBeInTheDocument()
   })
 })

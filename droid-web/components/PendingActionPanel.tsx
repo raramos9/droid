@@ -36,13 +36,9 @@ export function PendingActionPanel({ action }: Props) {
 
   return (
     <div
-      className="space-y-3 p-4"
+      className="card space-y-3 p-4"
       style={{
-        background: "var(--surface)",
-        borderLeft: "3px solid var(--accent)",
-        border: "1px solid var(--border)",
-        borderLeftWidth: "3px",
-        borderLeftColor: "var(--accent)",
+        borderLeft: "3px solid var(--status-warning)",
         opacity: done ? 0.5 : 1,
         transition: "opacity 0.2s",
       }}
@@ -53,14 +49,14 @@ export function PendingActionPanel({ action }: Props) {
             width: "6px",
             height: "6px",
             borderRadius: "50%",
-            background: "var(--accent)",
+            background: "var(--status-warning)",
             display: "inline-block",
-            animation: "pulse-dot 1.5s ease-in-out infinite",
+            animation: "pulse-subtle 1.5s ease-in-out infinite",
           }}
         />
         <span
-          className="font-data text-xs uppercase tracking-widest"
-          style={{ color: "var(--text-ter)" }}
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}
         >
           Awaiting Approval
         </span>
@@ -68,17 +64,18 @@ export function PendingActionPanel({ action }: Props) {
 
       <div>
         <span
-          className="font-data text-sm"
-          style={{ color: "var(--accent)" }}
+          className="font-mono text-sm"
+          style={{ color: "var(--text-secondary)" }}
         >
           {action.tool}
         </span>
         <pre
-          className="mt-2 p-3 text-xs overflow-x-auto font-data"
+          className="mt-2 p-3 text-xs overflow-x-auto font-mono"
           style={{
-            background: "var(--bg)",
+            background: "var(--surface-raised)",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--text-secondary)",
             border: "1px solid var(--border)",
-            color: "var(--text-sec)",
           }}
         >
           {JSON.stringify(action.args, null, 2)}
@@ -86,7 +83,7 @@ export function PendingActionPanel({ action }: Props) {
       </div>
 
       {error && (
-        <p role="alert" className="font-data text-xs" style={{ color: "var(--red)" }}>
+        <p role="alert" className="text-xs" style={{ color: "var(--status-error)", fontFamily: "var(--font-sans)" }}>
           {error}
         </p>
       )}
@@ -95,44 +92,14 @@ export function PendingActionPanel({ action }: Props) {
         <button
           onClick={() => handleDecision("approved")}
           disabled={done || loading}
-          className="px-4 py-1.5 text-xs font-data uppercase tracking-wider transition-all"
-          style={{
-            color: "var(--green)",
-            border: "1px solid var(--green)",
-            background: "transparent",
-          }}
-          onMouseEnter={(e) => {
-            if (!done && !loading) {
-              e.currentTarget.style.background = "var(--green)"
-              e.currentTarget.style.color = "var(--bg)"
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent"
-            e.currentTarget.style.color = "var(--green)"
-          }}
+          className="btn-success text-xs px-4 py-1.5"
         >
           {loading ? "..." : "Approve"}
         </button>
         <button
           onClick={() => handleDecision("rejected")}
           disabled={done || loading}
-          className="px-4 py-1.5 text-xs font-data uppercase tracking-wider transition-all"
-          style={{
-            color: "var(--red)",
-            border: "1px solid var(--red)",
-            background: "transparent",
-          }}
-          onMouseEnter={(e) => {
-            if (!done && !loading) {
-              e.currentTarget.style.background = "var(--red)"
-              e.currentTarget.style.color = "var(--bg)"
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent"
-            e.currentTarget.style.color = "var(--red)"
-          }}
+          className="btn-danger-outline text-xs px-4 py-1.5"
         >
           Reject
         </button>

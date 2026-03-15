@@ -1,18 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import type { EnrolledRepo } from "@/lib/types"
-
-interface Repo {
-  full_name: string
-  owner: { login: string }
-  name: string
-  private: boolean
-  permissions?: { admin: boolean }
-  pushed_at?: string
-}
+import { RepoGrid } from "@/components/RepoGrid"
+import type { EnrolledRepo, Repo } from "@/lib/types"
 
 interface Props {
   enrolledRepos: EnrolledRepo[]
@@ -23,7 +14,6 @@ const PAGE_SIZE = 20
 export function DashboardClient({ enrolledRepos }: Props) {
   const router = useRouter()
   const [query, setQuery] = useState("")
-  const [activeQuery, setActiveQuery] = useState("")
   const [allRepos, setAllRepos] = useState<Repo[]>([])
   const [loading, setLoading] = useState(false)
   const [enrolling, setEnrolling] = useState<string | null>(null)
@@ -47,19 +37,26 @@ export function DashboardClient({ enrolledRepos }: Props) {
     loadRepos()
   }, [])
 
-  function search() {
-    setActiveQuery(query)
-    setPage(1)
-  }
+  const enrolledSet = useMemo(
+    () => new Set(enrolledRepos.map((r) => `${r.owner}/${r.repo}`)),
+    [enrolledRepos]
+  )
 
-  const enrolledSet = new Set(enrolledRepos.map((r) => `${r.owner}/${r.repo}`))
-
-  const filteredRepos = activeQuery
-    ? allRepos.filter((r) => r.full_name.toLowerCase().includes(activeQuery.toLowerCase()))
-    : allRepos
+  const filteredRepos = useMemo(
+    () =>
+      query
+        ? allRepos.filter((r) => r.full_name.toLowerCase().includes(query.toLowerCase()))
+        : allRepos,
+    [allRepos, query]
+  )
 
   const totalPages = Math.ceil(filteredRepos.length / PAGE_SIZE)
   const pagedRepos = filteredRepos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  function handleQueryChange(value: string) {
+    setQuery(value)
+    setPage(1)
+  }
 
   async function enroll(repo: Repo) {
     setEnrolling(repo.full_name)
@@ -83,128 +80,96 @@ export function DashboardClient({ enrolledRepos }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
+          }}
+        >
+          All repositories
+        </h2>
         <input
           type="text"
-          placeholder="Search your repos..."
+          placeholder="Find a repository..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && search()}
-          className="flex-1 px-3 py-2 text-sm font-data outline-none"
+          onChange={(e) => handleQueryChange(e.target.value)}
           style={{
-            background: "var(--surface)",
+            padding: "5px 10px",
+            fontSize: "0.8rem",
+            background: "var(--surface-raised)",
             border: "1px solid var(--border)",
-            color: "var(--text-pri)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-sans)",
+            outline: "none",
+            width: 220,
           }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)" }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)" }}
         />
-        <button
-          onClick={search}
-          disabled={loading}
-          className="btn-amber px-4 py-2 disabled:opacity-40"
-        >
-          {loading ? "..." : "Search"}
-        </button>
       </div>
 
       {error && (
-        <p className="font-data text-xs" style={{ color: "var(--red)" }}>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--status-error)",
+            fontFamily: "var(--font-sans)",
+            margin: 0,
+          }}
+        >
           {error}
         </p>
       )}
 
-      {pagedRepos.length > 0 && (
-        <ul style={{ border: "1px solid var(--border)" }}>
-          {pagedRepos.map((repo, i) => {
-            const enrolled = enrolledSet.has(repo.full_name)
-            return (
-              <li
-                key={repo.full_name}
-                className="flex items-center gap-3 px-3 py-2.5 transition-colors"
-                style={{
-                  background: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
-                  borderBottom: "1px solid var(--border)",
-                }}
-              >
-                <span className="flex-1 font-data text-sm truncate" style={{ color: "var(--text-pri)" }}>
-                  {repo.full_name}
-                </span>
-                <span
-                  className="font-data text-xs px-1.5 py-0.5"
-                  style={{
-                    color: repo.private ? "var(--text-ter)" : "var(--blue)",
-                    border: `1px solid ${repo.private ? "var(--border)" : "var(--blue)"}`,
-                  }}
-                >
-                  {repo.private ? "Private" : "Public"}
-                </span>
-                <span className="font-data text-xs w-24 text-right shrink-0" style={{ color: "var(--text-ter)" }}>
-                  {repo.pushed_at ? new Date(repo.pushed_at).toLocaleDateString() : "—"}
-                </span>
-                {enrolled ? (
-                  <>
-                    <span
-                      className="font-data text-xs px-2 py-0.5"
-                      style={{
-                        color: "var(--green)",
-                        border: "1px solid var(--green)",
-                      }}
-                    >
-                      Enrolled
-                    </span>
-                    <Link
-                      href={`/dashboard/${repo.owner.login}/${repo.name}`}
-                      className="font-data text-xs transition-colors"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      View activity →
-                    </Link>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => enroll(repo)}
-                    disabled={enrolling === repo.full_name}
-                    className="font-data text-xs px-3 py-1 uppercase tracking-wider transition-all disabled:opacity-40"
-                    style={{
-                      color: "var(--accent)",
-                      border: "1px solid var(--accent-dim)",
-                      background: "transparent",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (enrolling !== repo.full_name) {
-                        e.currentTarget.style.background = "var(--accent)"
-                        e.currentTarget.style.color = "var(--bg)"
-                        e.currentTarget.style.borderColor = "var(--accent)"
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent"
-                      e.currentTarget.style.color = "var(--accent)"
-                      e.currentTarget.style.borderColor = "var(--accent-dim)"
-                    }}
-                  >
-                    {enrolling === repo.full_name ? "Enrolling..." : "Enroll"}
-                  </button>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+      {loading ? (
+        <p
+          style={{
+            fontSize: "0.8rem",
+            color: "var(--text-tertiary)",
+            fontFamily: "var(--font-sans)",
+            margin: 0,
+          }}
+        >
+          Loading...
+        </p>
+      ) : (
+        <RepoGrid
+          repos={pagedRepos}
+          enrolledSet={enrolledSet}
+          enrolling={enrolling}
+          onEnroll={enroll}
+        />
       )}
 
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex gap-1 justify-center">
+        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i + 1}
               onClick={() => setPage(i + 1)}
-              className="font-data px-2.5 py-1 text-xs transition-colors"
+              aria-label={String(i + 1)}
               style={{
-                background: page === i + 1 ? "var(--accent)" : "var(--surface-2)",
-                color: page === i + 1 ? "var(--bg)" : "var(--text-sec)",
+                fontSize: "0.75rem",
+                padding: "3px 8px",
+                background: page === i + 1 ? "var(--interactive)" : "var(--surface-raised)",
+                color: page === i + 1 ? "var(--bg)" : "var(--text-secondary)",
                 border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
               }}
             >
               {i + 1}

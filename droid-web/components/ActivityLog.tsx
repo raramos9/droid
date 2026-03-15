@@ -5,48 +5,48 @@ interface Props {
 }
 
 export function ActivityLog({ messages }: Props) {
-  const textBlocks = messages.flatMap((msg) =>
-    msg.content.filter(
+  const textBlocks = messages.flatMap((msg) => {
+    if (typeof msg.content === "string") return []
+    return msg.content.filter(
       (block): block is { type: "text"; text: string } => block.type === "text"
     )
-  )
+  })
 
   if (textBlocks.length === 0) {
     return (
       <p
-        className="font-data text-sm cursor-blink"
-        style={{ color: "var(--text-ter)" }}
+        className="text-sm text-center"
+        style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-sans)" }}
       >
-        $ no activity yet
+        No activity yet
       </p>
     )
   }
 
   return (
-    <ol className="space-y-2">
+    <ol>
       {textBlocks.map((block, i) => {
         const isLatest = i === textBlocks.length - 1
         return (
           <li
             key={`${i}-${block.text.slice(0, 32)}`}
-            className="flex gap-3 p-3 text-sm"
+            className="flex gap-3 py-3 text-sm"
             style={{
-              background: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
-              borderLeft: isLatest
-                ? "2px solid var(--accent)"
-                : "2px solid var(--border)",
+              borderBottom: "1px solid var(--border)",
+              borderLeft: isLatest ? "2px solid var(--interactive)" : undefined,
+              paddingLeft: isLatest ? "12px" : undefined,
             }}
           >
             <span
               data-counter
-              className="font-data text-xs shrink-0 select-none"
-              style={{ color: "var(--accent)", marginTop: "2px" }}
+              className="font-mono text-xs shrink-0 select-none"
+              style={{ color: "var(--text-tertiary)", marginTop: "2px" }}
             >
-              [{i + 1}]
+              {i + 1}.
             </span>
             <span
               className="whitespace-pre-wrap leading-relaxed"
-              style={{ color: "var(--text-pri)", fontFamily: "var(--font-sans)" }}
+              style={{ color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
             >
               {block.text}
             </span>
