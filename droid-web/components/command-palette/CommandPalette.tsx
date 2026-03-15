@@ -13,9 +13,7 @@ interface Props {
 function groupBySection(actions: CommandAction[]): Map<string, CommandAction[]> {
   const map = new Map<string, CommandAction[]>()
   for (const action of actions) {
-    const group = map.get(action.section) ?? []
-    group.push(action)
-    map.set(action.section, group)
+    map.set(action.section, [...(map.get(action.section) ?? []), action])
   }
   return map
 }

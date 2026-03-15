@@ -134,7 +134,6 @@ export function PrCard({ pr, isDroidCreated, owner, repo }: Props) {
           style={{
             fontSize: "0.75rem",
             color: "var(--text-tertiary)",
-            fontFamily: "var(--font-sans)",
             fontFamily: "var(--font-mono)",
             margin: 0,
           }}

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { CommandPalette } from "./CommandPalette"
 import { buildActions } from "./command-actions"
@@ -38,13 +38,12 @@ export function CommandPaletteProvider({ repos, children }: Props) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const router = useRouter()
 
-  const actions = buildActions({
-    repos,
-    navigate: (href) => {
-      router.push(href)
-      setOpen(false)
-    },
-  })
+  const navigate = useCallback((href: string) => {
+    router.push(href)
+    setOpen(false)
+  }, [router])
+
+  const actions = useMemo(() => buildActions({ repos, navigate }), [repos, navigate])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

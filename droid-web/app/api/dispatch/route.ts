@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
+import { getEnrolledRepos } from "@/lib/queries"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -16,6 +17,13 @@ export async function POST(req: NextRequest) {
 
   if (type !== "issue" && type !== "pr") {
     return NextResponse.json({ error: "type must be 'issue' or 'pr'" }, { status: 400 })
+  }
+
+  const installedBy = session.user.name ?? session.user.email ?? ""
+  const enrolled = await getEnrolledRepos(installedBy)
+  const isEnrolled = enrolled.some((r) => r.owner === owner && r.repo === repo)
+  if (!isEnrolled) {
+    return NextResponse.json({ error: "Repository not enrolled" }, { status: 403 })
   }
 
   const workerUrl = process.env.DROID_WORKER_URL ?? "http://localhost:8787"

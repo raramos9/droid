@@ -32,7 +32,8 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
   useEffect(() => {
     if (activeTab === "issues" && issues === null && !issuesLoading) {
       setIssuesLoading(true)
-      fetch(`/api/github/issues?owner=${owner}&repo=${repo}`)
+      const q = new URLSearchParams({ owner, repo }).toString()
+      fetch(`/api/github/issues?${q}`)
         .then(async (res) => {
           if (!res.ok) {
             const data = await res.json()
@@ -52,7 +53,8 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
   useEffect(() => {
     if (activeTab === "prs" && prs === null && !prsLoading) {
       setPrsLoading(true)
-      fetch(`/api/github/prs?owner=${owner}&repo=${repo}`)
+      const q = new URLSearchParams({ owner, repo }).toString()
+      fetch(`/api/github/prs?${q}`)
         .then(async (res) => {
           if (!res.ok) {
             const data = await res.json()
@@ -79,16 +81,16 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
   const prItems = prs ?? []
 
   const { selectedIndex: issueSelectedIndex } = useKeyboardNavigation({
-    items: issueItems,
+    items: activeTab === "issues" ? issueItems : [],
     onSelect: (issue) => {
       router.push(`/dashboard/${owner}/${repo}/issues/${issue.number}`)
     },
   })
 
   const { selectedIndex: prSelectedIndex } = useKeyboardNavigation({
-    items: prItems,
+    items: activeTab === "prs" ? prItems : [],
     onSelect: (pr) => {
-      router.push(`/dashboard/${owner}/${repo}/issues/${pr.number}`)
+      window.open(pr.html_url, "_blank", "noopener,noreferrer")
     },
   })
 
@@ -104,6 +106,9 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
               padding: "8px 16px",
               fontSize: "0.8rem",
               color: activeTab === tab ? "var(--text-primary)" : "var(--text-tertiary)",
+              borderTop: "none",
+              borderLeft: "none",
+              borderRight: "none",
               borderBottom: activeTab === tab
                 ? "2px solid var(--text-primary)"
                 : "2px solid transparent",
@@ -111,10 +116,6 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
               fontFamily: "var(--font-sans)",
               fontWeight: activeTab === tab ? 500 : 400,
               cursor: "pointer",
-              border: "none",
-              borderBottom: activeTab === tab
-                ? "2px solid var(--text-primary)"
-                : "2px solid transparent",
             }}
           >
             {tab === "prs" ? "Pull Requests" : "Issues"}
