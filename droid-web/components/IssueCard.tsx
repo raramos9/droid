@@ -43,63 +43,8 @@ export function IssueCard({ issue, run, owner, repo }: Props) {
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
-      {/* Compact header row */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "8px 14px",
-          minHeight: 38,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.7rem",
-            color: "var(--text-tertiary)",
-            flexShrink: 0,
-            minWidth: 32,
-          }}
-        >
-          #{issue.number}
-        </span>
-        <span
-          style={{
-            flex: 1,
-            fontSize: "0.8rem",
-            fontWeight: 500,
-            color: "var(--text-primary)",
-            fontFamily: "var(--font-sans)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {issue.title}
-        </span>
-        {run && (
-          <span
-            className="badge"
-            style={{ background: "var(--status-success-bg)", color: "var(--status-success)", flexShrink: 0 }}
-          >
-            Droid responded
-          </span>
-        )}
-        <span
-          style={{
-            fontSize: "0.7rem",
-            color: "var(--text-tertiary)",
-            fontFamily: "var(--font-mono)",
-            flexShrink: 0,
-          }}
-        >
-          {new Date(issue.created_at).toLocaleDateString()}
-        </span>
-      </div>
-
       {/* Detail section */}
-      <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ padding: "8px 14px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
         <p
           style={{
             fontSize: "0.75rem",

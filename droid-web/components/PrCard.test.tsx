@@ -28,26 +28,10 @@ beforeEach(() => {
 })
 
 describe("PrCard", () => {
-  it("renders PR number and title", () => {
-    render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
-    expect(screen.getByText("#10")).toBeInTheDocument()
-    expect(screen.getByText("Add feature X")).toBeInTheDocument()
-  })
-
-  it("renders branch info", () => {
+  it("renders branch info in detail section", () => {
     render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
     expect(screen.getByText(/feature-x/)).toBeInTheDocument()
     expect(screen.getByText(/main/)).toBeInTheDocument()
-  })
-
-  it("shows DROID CREATED badge when isDroidCreated", () => {
-    render(<PrCard pr={droidPr} isDroidCreated={true} owner="acme" repo="api" />)
-    expect(screen.getByText("Droid created")).toBeInTheDocument()
-  })
-
-  it("does not show badge when not droid created", () => {
-    render(<PrCard pr={mockPr} isDroidCreated={false} owner="acme" repo="api" />)
-    expect(screen.queryByText("Droid created")).not.toBeInTheDocument()
   })
 
   it("renders Show files button", () => {

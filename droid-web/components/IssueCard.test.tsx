@@ -37,25 +37,9 @@ beforeEach(() => {
 })
 
 describe("IssueCard", () => {
-  it("renders issue number and title", () => {
-    render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
-    expect(screen.getByText("#42")).toBeInTheDocument()
-    expect(screen.getByText("Fix login bug")).toBeInTheDocument()
-  })
-
-  it("renders author and date", () => {
+  it("renders author and date in detail section", () => {
     render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
     expect(screen.getByText(/testuser/)).toBeInTheDocument()
-  })
-
-  it("shows DROID RESPONDED badge when run exists", () => {
-    render(<IssueCard issue={mockIssue} run={mockRun} owner="acme" repo="api" />)
-    expect(screen.getByText("Droid responded")).toBeInTheDocument()
-  })
-
-  it("does not show badge when run is null", () => {
-    render(<IssueCard issue={mockIssue} run={null} owner="acme" repo="api" />)
-    expect(screen.queryByText("Droid responded")).not.toBeInTheDocument()
   })
 
   it("renders dispatch button", () => {

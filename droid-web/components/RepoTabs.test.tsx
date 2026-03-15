@@ -58,6 +58,7 @@ describe("RepoTabs", () => {
           html_url: "https://github.com/acme/api/issues/42",
           labels: [],
           state: "open",
+          comments: 0,
         },
       ]),
     })
@@ -65,8 +66,7 @@ describe("RepoTabs", () => {
     render(<RepoTabs owner="acme" repo="api" runsMap={runsMap} />)
 
     await waitFor(() => {
-      expect(screen.getByText("#42")).toBeInTheDocument()
-      expect(screen.getByText("Fix bug")).toBeInTheDocument()
+      expect(screen.getByText(/testuser/)).toBeInTheDocument()
     })
   })
 
@@ -132,6 +132,8 @@ describe("RepoTabs", () => {
           base: { ref: "main" },
           state: "open",
           draft: false,
+          comments: 0,
+          labels: [],
         },
       ]),
     })
@@ -139,8 +141,8 @@ describe("RepoTabs", () => {
     render(<RepoTabs owner="acme" repo="api" runsMap={{}} />)
 
     await waitFor(() => {
-      expect(screen.getByText("#5")).toBeInTheDocument()
-      expect(screen.getByText("Droid created")).toBeInTheDocument()
+      // PrCard detail section renders branch info
+      expect(screen.getByText(/fix-branch/)).toBeInTheDocument()
     })
   })
 
@@ -176,6 +178,7 @@ describe("RepoTabs", () => {
           html_url: "https://github.com/acme/api/issues/42",
           labels: [],
           state: "open",
+          comments: 0,
         },
       ]),
     })
@@ -183,7 +186,8 @@ describe("RepoTabs", () => {
     render(<RepoTabs owner="acme" repo="api" runsMap={runsMap} />)
 
     await waitFor(() => {
-      expect(screen.getByText("Droid responded")).toBeInTheDocument()
+      // IssueCard detail section renders author info
+      expect(screen.getByText(/testuser/)).toBeInTheDocument()
     })
   })
 })
