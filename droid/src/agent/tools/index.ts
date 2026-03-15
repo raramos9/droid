@@ -80,8 +80,8 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
         try {
           const file = await sandbox.readFile(safePath);
           return file.content;
-        } catch {
-          throw new Error("Error reading file");
+        } catch (err) {
+          return `Error: could not read file "${safePath}" — ${(err as Error).message}`;
         }
       },
     },
@@ -269,17 +269,21 @@ export function createGithubReadTools(octokit: ToolContext["octokit"]): DroidToo
         },
       },
       execute: async (args) => {
-        const { data } = await octokit.repos.compareCommits({
-          owner: args.owner,
-          repo: args.repo,
-          base: args.base,
-          head: args.head,
-        });
-        const files = (data.files || []).map((f: { filename: string; patch?: string }) => ({
-          filename: f.filename,
-          patch: f.patch,
-        }));
-        return JSON.stringify(files);
+        try {
+          const { data } = await octokit.repos.compareCommits({
+            owner: args.owner as string,
+            repo: args.repo as string,
+            base: args.base as string,
+            head: args.head as string,
+          });
+          const files = (data.files || []).map((f: { filename: string; patch?: string }) => ({
+            filename: f.filename,
+            patch: f.patch,
+          }));
+          return JSON.stringify(files);
+        } catch (err) {
+          return `Error: could not compare "${args.base}...${args.head}" — ${(err as Error).message}. Make sure both refs exist.`;
+        }
       },
     },
   ];

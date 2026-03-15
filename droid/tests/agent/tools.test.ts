@@ -49,12 +49,14 @@ describe("filesystem tools", () => {
     expect(sandbox.readFile).toHaveBeenCalledWith("/workspace/foo.ts");
   });
 
-  it("readFile throws on sandbox error", async () => {
+  it("readFile returns error string on sandbox error", async () => {
     const sandbox = makeSandbox();
     sandbox.readFile.mockRejectedValueOnce(new Error("not found"));
     const tools = createFilesystemTools(sandbox);
     const readFile = tools.find((t) => t.name === "readFile")!;
-    await expect(readFile.execute({ filePath: "/missing.ts" })).rejects.toThrow("Error reading file");
+    const result = await readFile.execute({ filePath: "/missing.ts" });
+    expect(result).toContain("Error: could not read file");
+    expect(result).toContain("not found");
   });
 
   it("writeFile writes content and returns confirmation", async () => {
