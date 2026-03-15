@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { Octokit } from "@octokit/rest"
 
+const VALID_STATES = ["open", "closed", "all"] as const
+type IssueState = (typeof VALID_STATES)[number]
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) {
@@ -15,13 +18,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "owner and repo are required" }, { status: 400 })
   }
 
+  const stateParam = req.nextUrl.searchParams.get("state") ?? "open"
+  if (!VALID_STATES.includes(stateParam as IssueState)) {
+    return NextResponse.json({ error: "state must be open, closed, or all" }, { status: 400 })
+  }
+
   const octokit = new Octokit({ auth: session.accessToken })
 
   try {
     const { data } = await octokit.issues.listForRepo({
       owner,
       repo,
-      state: "open",
+      state: stateParam as IssueState,
       per_page: 30,
     })
 

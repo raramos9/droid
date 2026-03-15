@@ -80,4 +80,53 @@ describe("GET /api/github/prs", () => {
     const res = await GET(makeGet("?owner=acme&repo=api"))
     expect(res.status).toBe(500)
   })
+
+  it("passes state=closed to octokit when state param is closed", async () => {
+    auth.mockResolvedValue({ accessToken: "tok" })
+    mockList.mockResolvedValue({ data: [] })
+
+    await GET(makeGet("?owner=acme&repo=api&state=closed"))
+
+    expect(mockList).toHaveBeenCalledWith({
+      owner: "acme",
+      repo: "api",
+      state: "closed",
+      per_page: 30,
+    })
+  })
+
+  it("passes state=all to octokit when state param is all", async () => {
+    auth.mockResolvedValue({ accessToken: "tok" })
+    mockList.mockResolvedValue({ data: [] })
+
+    await GET(makeGet("?owner=acme&repo=api&state=all"))
+
+    expect(mockList).toHaveBeenCalledWith({
+      owner: "acme",
+      repo: "api",
+      state: "all",
+      per_page: 30,
+    })
+  })
+
+  it("defaults to open when state param is omitted", async () => {
+    auth.mockResolvedValue({ accessToken: "tok" })
+    mockList.mockResolvedValue({ data: [] })
+
+    await GET(makeGet("?owner=acme&repo=api"))
+
+    expect(mockList).toHaveBeenCalledWith({
+      owner: "acme",
+      repo: "api",
+      state: "open",
+      per_page: 30,
+    })
+  })
+
+  it("returns 400 when state param is invalid", async () => {
+    auth.mockResolvedValue({ accessToken: "tok" })
+
+    const res = await GET(makeGet("?owner=acme&repo=api&state=invalid"))
+    expect(res.status).toBe(400)
+  })
 })

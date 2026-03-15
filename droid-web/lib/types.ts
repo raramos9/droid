@@ -64,6 +64,7 @@ export interface GitHubIssue {
   html_url: string
   labels: Array<{ name: string; color: string }>
   state: string
+  comments: number
 }
 
 export interface GitHubPR {
@@ -76,6 +77,8 @@ export interface GitHubPR {
   base: { ref: string }
   state: string
   draft: boolean
+  comments: number
+  labels: Array<{ name: string; color: string }>
 }
 
 export interface GitHubPRFile {
