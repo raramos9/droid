@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   return (
     <>
       <TopBar />
-      <div style={{ padding: "32px 24px", maxWidth: 720, width: "100%" }}>
+      <div style={{ padding: "32px 24px" }}>
         <p
           style={{
             fontSize: "0.75rem",
