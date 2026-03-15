@@ -47,6 +47,19 @@ export interface PendingAction {
   created_at: string
 }
 
+export interface Repo {
+  full_name: string
+  owner: { login: string }
+  name: string
+  private: boolean
+  permissions?: { admin: boolean }
+  pushed_at?: string
+  language: string | null
+  description: string | null
+  fork: boolean
+  parent: { full_name: string } | null
+}
+
 export interface EnrolledRepo {
   id: number
   owner: string
