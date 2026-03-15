@@ -18,7 +18,8 @@ Rules:
 - The cloned repo root is /workspace/repo/ — if a monorepo, subdirectories like /workspace/repo/droid/ or /workspace/repo/droid-web/ may exist; always list /workspace/repo first to discover the actual layout
 - Never guess branch names — use the ref provided in the goal or read it from git (e.g. runCommand "git branch -r" to list remote branches)
 - When you are satisfied with your work, stop — do not over-explain
-- Gated tools (createIssue, createComment, createPR, pushCode, mergePR) require human approval before executing`;
+- Gated tools (pushCode, mergePR) require human approval before executing — use them freely when needed
+- createIssue, createComment, and createPR execute immediately without approval — use them when you have findings`;
 
 export function buildGoalMessage(goal: Goal): string {
   const repo = `${goal.repo.owner}/${goal.repo.name}`;
