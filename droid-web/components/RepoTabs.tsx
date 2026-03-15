@@ -1,11 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import type { AgentRun, GitHubIssue, GitHubPR } from "@/lib/types"
+import { IssueRow } from "./IssueRow"
+import { PrRow } from "./PrRow"
 import { IssueCard } from "./IssueCard"
 import { PrCard } from "./PrCard"
+import { IssueListHeader } from "./IssueListHeader"
+import { IssueEmptyState } from "./IssueEmptyState"
 import { useKeyboardNavigation } from "@/lib/hooks/useKeyboardNavigation"
+import { useListFilters } from "@/lib/hooks/useListFilters"
 
 const DROID_BOT_USERNAME = "getdroid[bot]"
 
@@ -29,10 +34,15 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
   const [issuesError, setIssuesError] = useState<string | null>(null)
   const [prsError, setPrsError] = useState<string | null>(null)
 
+  const [issuesState, setIssuesState] = useState<"open" | "closed">("open")
+  const [prsState, setPrsState] = useState<"open" | "closed">("open")
+  const [selectedIssueIndex, setSelectedIssueIndex] = useState(-1)
+  const [selectedPrIndex, setSelectedPrIndex] = useState(-1)
+
   useEffect(() => {
     if (activeTab === "issues" && issues === null && !issuesLoading) {
       setIssuesLoading(true)
-      const q = new URLSearchParams({ owner, repo }).toString()
+      const q = new URLSearchParams({ owner, repo, state: issuesState }).toString()
       fetch(`/api/github/issues?${q}`)
         .then(async (res) => {
           if (!res.ok) {
@@ -48,12 +58,12 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
         .catch((err) => setIssuesError(err.message))
         .finally(() => setIssuesLoading(false))
     }
-  }, [activeTab, issues, issuesLoading, owner, repo])
+  }, [activeTab, issues, issuesLoading, owner, repo, issuesState])
 
   useEffect(() => {
     if (activeTab === "prs" && prs === null && !prsLoading) {
       setPrsLoading(true)
-      const q = new URLSearchParams({ owner, repo }).toString()
+      const q = new URLSearchParams({ owner, repo, state: prsState }).toString()
       fetch(`/api/github/prs?${q}`)
         .then(async (res) => {
           if (!res.ok) {
@@ -69,7 +79,7 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
         .catch((err) => setPrsError(err.message))
         .finally(() => setPrsLoading(false))
     }
-  }, [activeTab, prs, prsLoading, owner, repo])
+  }, [activeTab, prs, prsLoading, owner, repo, prsState])
 
   const switchTab = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -77,22 +87,50 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  const issueItems = issues ?? []
-  const prItems = prs ?? []
+  const handleIssuesStateChange = (state: "open" | "closed") => {
+    setIssues(null)
+    setIssuesState(state)
+    setSelectedIssueIndex(-1)
+  }
 
-  const { selectedIndex: issueSelectedIndex } = useKeyboardNavigation({
-    items: activeTab === "issues" ? issueItems : [],
+  const handlePrsStateChange = (state: "open" | "closed") => {
+    setPrs(null)
+    setPrsState(state)
+    setSelectedPrIndex(-1)
+  }
+
+  const issueFilters = useListFilters(issues ?? [], {
+    getAuthor: (issue: GitHubIssue) => issue.user.login,
+    getLabels: (issue: GitHubIssue) => issue.labels.map((l) => l.name),
+  })
+
+  const prFilters = useListFilters(prs ?? [], {
+    getAuthor: (pr: GitHubPR) => pr.user.login,
+    getLabels: (pr: GitHubPR) => pr.labels.map((l) => l.name),
+  })
+
+  const filteredIssues = issueFilters.filtered
+  const filteredPrs = prFilters.filtered
+
+  const { selectedIndex: issueKbIndex } = useKeyboardNavigation({
+    items: activeTab === "issues" ? filteredIssues : [],
     onSelect: (issue) => {
-      router.push(`/dashboard/${owner}/${repo}/issues/${issue.number}`)
+      const idx = filteredIssues.indexOf(issue)
+      setSelectedIssueIndex(idx === selectedIssueIndex ? -1 : idx)
     },
   })
 
-  const { selectedIndex: prSelectedIndex } = useKeyboardNavigation({
-    items: activeTab === "prs" ? prItems : [],
+  const { selectedIndex: prKbIndex } = useKeyboardNavigation({
+    items: activeTab === "prs" ? filteredPrs : [],
     onSelect: (pr) => {
-      window.open(pr.html_url, "_blank", "noopener,noreferrer")
+      const idx = filteredPrs.indexOf(pr)
+      setSelectedPrIndex(idx === selectedPrIndex ? -1 : idx)
     },
   })
+
+  // Sync keyboard navigation index with selected index for visual highlight
+  const activeIssueIndex = selectedIssueIndex >= 0 ? selectedIssueIndex : issueKbIndex
+  const activePrIndex = selectedPrIndex >= 0 ? selectedPrIndex : prKbIndex
 
   return (
     <div>
@@ -125,7 +163,18 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
 
       {/* Issues tab */}
       {activeTab === "issues" && (
-        <div>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden", marginTop: 16 }}>
+          <IssueListHeader
+            activeState={issuesState}
+            onStateChange={handleIssuesStateChange}
+            authors={issueFilters.authors}
+            selectedAuthor={issueFilters.selectedAuthor}
+            onAuthorChange={issueFilters.setSelectedAuthor}
+            labels={issueFilters.labels}
+            selectedLabel={issueFilters.selectedLabel}
+            onLabelChange={issueFilters.setSelectedLabel}
+            showLabels={true}
+          />
           {issuesLoading && (
             <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               Loading issues...
@@ -136,34 +185,44 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
               {issuesError}
             </p>
           )}
-          {!issuesLoading && !issuesError && issues && issues.length === 0 && (
-            <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
-              No open issues
-            </p>
+          {!issuesLoading && !issuesError && issues && filteredIssues.length === 0 && (
+            <IssueEmptyState type="issues" state={issuesState} />
           )}
-          {issueItems.map((issue, i) => (
-            <div
-              key={issue.number}
-              style={{
-                background: issueSelectedIndex === i ? "var(--selection-bg)" : "transparent",
-                borderLeft: issueSelectedIndex === i ? "2px solid var(--border-strong)" : "2px solid transparent",
-                transition: "background var(--transition)",
-              }}
-            >
-              <IssueCard
+          {filteredIssues.map((issue, i) => (
+            <React.Fragment key={issue.number}>
+              <IssueRow
                 issue={issue}
                 run={runsMap[issue.number.toString()] ?? null}
-                owner={owner}
-                repo={repo}
+                isSelected={activeIssueIndex === i}
+                onClick={() => setSelectedIssueIndex(i === selectedIssueIndex ? -1 : i)}
               />
-            </div>
+              {selectedIssueIndex === i && (
+                <IssueCard
+                  issue={issue}
+                  run={runsMap[issue.number.toString()] ?? null}
+                  owner={owner}
+                  repo={repo}
+                />
+              )}
+            </React.Fragment>
           ))}
         </div>
       )}
 
       {/* PRs tab */}
       {activeTab === "prs" && (
-        <div>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden", marginTop: 16 }}>
+          <IssueListHeader
+            activeState={prsState}
+            onStateChange={handlePrsStateChange}
+            authors={prFilters.authors}
+            selectedAuthor={prFilters.selectedAuthor}
+            onAuthorChange={prFilters.setSelectedAuthor}
+            labels={prFilters.labels}
+            selectedLabel={prFilters.selectedLabel}
+            onLabelChange={prFilters.setSelectedLabel}
+            showLabels={true}
+          />
           {prsLoading && (
             <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
               Loading pull requests...
@@ -174,27 +233,26 @@ export function RepoTabs({ owner, repo, runsMap }: Props) {
               {prsError}
             </p>
           )}
-          {!prsLoading && !prsError && prs && prs.length === 0 && (
-            <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", padding: "16px 14px" }}>
-              No open pull requests
-            </p>
+          {!prsLoading && !prsError && prs && filteredPrs.length === 0 && (
+            <IssueEmptyState type="prs" state={prsState} />
           )}
-          {prItems.map((pr, i) => (
-            <div
-              key={pr.number}
-              style={{
-                background: prSelectedIndex === i ? "var(--selection-bg)" : "transparent",
-                borderLeft: prSelectedIndex === i ? "2px solid var(--border-strong)" : "2px solid transparent",
-                transition: "background var(--transition)",
-              }}
-            >
-              <PrCard
+          {filteredPrs.map((pr, i) => (
+            <React.Fragment key={pr.number}>
+              <PrRow
                 pr={pr}
                 isDroidCreated={pr.user.login === DROID_BOT_USERNAME}
-                owner={owner}
-                repo={repo}
+                isSelected={activePrIndex === i}
+                onClick={() => setSelectedPrIndex(i === selectedPrIndex ? -1 : i)}
               />
-            </div>
+              {selectedPrIndex === i && (
+                <PrCard
+                  pr={pr}
+                  isDroidCreated={pr.user.login === DROID_BOT_USERNAME}
+                  owner={owner}
+                  repo={repo}
+                />
+              )}
+            </React.Fragment>
           ))}
         </div>
       )}
