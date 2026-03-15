@@ -12,6 +12,8 @@ const mockPr: GitHubPR = {
   base: { ref: "main" },
   state: "open",
   draft: false,
+  comments: 0,
+  labels: [],
 }
 
 const droidPr: GitHubPR = {

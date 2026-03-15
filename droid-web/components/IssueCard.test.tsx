@@ -10,6 +10,7 @@ const mockIssue: GitHubIssue = {
   html_url: "https://github.com/acme/api/issues/42",
   labels: [{ name: "bug", color: "d73a4a" }],
   state: "open",
+  comments: 3,
 }
 
 const mockRun: AgentRun = {
