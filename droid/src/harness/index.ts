@@ -3,6 +3,7 @@ import { Octokit } from "@octokit/rest";
 import { runAgent } from "../agent/index";
 import { loadCheckpoint } from "../agent/checkpoint";
 import { loadRepoConfig } from "../agent/config";
+import { loadDroidMd } from "../agent/droidMd";
 import { buildSystemPrompt } from "../agent/prompt";
 import { cloneRepo } from "../lib/cloneRepo";
 import type { Goal, AgentRun, MessageParam } from "../types/agent";
@@ -36,18 +37,16 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
     const branch = ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : undefined;
     await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, env.GITHUB_TOKEN, branch);
 
-    let systemPrompt: string | undefined;
-    try {
-      const repoConfig = await loadRepoConfig(
-        goal.repo.owner,
-        goal.repo.name,
-        env.SUPABASE_URL,
-        env.SUPABASE_SERVICE_KEY,
-      );
-      systemPrompt = buildSystemPrompt(repoConfig.userConfig, repoConfig.repoOverrides);
-    } catch (configErr) {
-      console.error("loadRepoConfig failed, falling back to base prompt:", configErr);
-    }
+    const fallbackConfig = { userConfig: "", repoOverrides: "" };
+    const [repoConfig, droidMdContent] = await Promise.all([
+      loadRepoConfig(goal.repo.owner, goal.repo.name, env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY).catch(
+        (err) => { console.error("loadRepoConfig failed, using empty config:", err); return fallbackConfig; },
+      ),
+      loadDroidMd(sandbox).catch(
+        (err) => { console.error("loadDroidMd failed, skipping .droid.md:", err); return ""; },
+      ),
+    ]);
+    const systemPrompt = buildSystemPrompt(repoConfig.userConfig, droidMdContent, repoConfig.repoOverrides);
 
     const ctx = {
       sandbox,

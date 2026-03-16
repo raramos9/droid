@@ -27,6 +27,11 @@ vi.mock("../../src/agent/config", () => ({
   loadRepoConfig: mockLoadRepoConfig,
 }));
 
+const mockLoadDroidMd = vi.hoisted(() => vi.fn().mockResolvedValue(""));
+vi.mock("../../src/agent/droidMd", () => ({
+  loadDroidMd: mockLoadDroidMd,
+}));
+
 import { getSandbox } from "@cloudflare/sandbox";
 import { cloneRepo } from "../../src/lib/cloneRepo";
 import { runDroidAgent } from "../../src/harness/index";
@@ -166,7 +171,28 @@ describe("runDroidAgent", () => {
     mockLoadRepoConfig.mockRejectedValueOnce(new Error("supabase down"));
     const result = await runDroidAgent(pushGoal, env);
     expect(result.status).toBe("completed");
+    // systemPrompt is always defined now — falls back to base SYSTEM_PROMPT
     const opts = mockRunAgent.mock.calls[0][2];
-    expect(opts.systemPrompt).toBeUndefined();
+    expect(opts.systemPrompt).toBeDefined();
+  });
+
+  it("calls loadDroidMd with the sandbox after cloneRepo", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockLoadDroidMd).toHaveBeenCalledWith(mockSandbox);
+    expect(mockLoadDroidMd).toHaveBeenCalledAfter(mockCloneRepo as any);
+  });
+
+  it("includes droidMd content in systemPrompt when present", async () => {
+    mockLoadDroidMd.mockResolvedValueOnce("# Repo rules\nBe terse.");
+    await runDroidAgent(pushGoal, env);
+    const opts = mockRunAgent.mock.calls[0][2];
+    expect(opts.systemPrompt).toContain("Be terse.");
+  });
+
+  it("falls back gracefully when loadDroidMd throws", async () => {
+    mockLoadDroidMd.mockRejectedValueOnce(new Error("sandbox error"));
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("completed");
+    expect(mockRunAgent).toHaveBeenCalled();
   });
 });
