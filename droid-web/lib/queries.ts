@@ -142,3 +142,40 @@ export async function getPendingActions(runId: string): Promise<PendingAction[]>
   if (error) throw new Error(error.message)
   return data as PendingAction[]
 }
+
+// Called by both the API route (user-facing) and the droid worker (no user context).
+// Ownership verification must be enforced at the API route layer.
+export async function getRepoConfigOverrides(owner: string, repo: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("enrolled_repos")
+    .select("config_overrides")
+    .eq("owner", owner)
+    .eq("repo", repo)
+    .single()
+
+  if (error) {
+    if (error.code === "PGRST116") return null
+    throw new Error(error.message)
+  }
+  return data?.config_overrides ?? null
+}
+
+// installedBy is required to scope the update to repos the user enrolled.
+// Input length validation (max 20KB) must be enforced by the calling API route.
+export async function updateRepoConfigOverrides(
+  owner: string,
+  repo: string,
+  overrides: string,
+  installedBy: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("enrolled_repos")
+    .update({ config_overrides: overrides })
+    .eq("owner", owner)
+    .eq("repo", repo)
+    .eq("installed_by", installedBy)
+    .select()
+
+  if (error) throw new Error(error.message)
+  if (!data?.length) throw new Error("Repo not found or not enrolled by this user")
+}

@@ -6,6 +6,8 @@ import {
   getRunsMapByIssueNumber,
   getPendingActionsCount,
   getAllPendingActionsWithContext,
+  getRepoConfigOverrides,
+  updateRepoConfigOverrides,
 } from "./queries"
 
 // Mock Supabase client
@@ -17,6 +19,8 @@ const mockSingle = jest.fn()
 const mockFilter = jest.fn()
 const mockOr = jest.fn()
 const mockIn = jest.fn()
+const mockUpsert = jest.fn()
+const mockUpdate = jest.fn()
 
 const chainMock = {
   select: mockSelect,
@@ -27,6 +31,8 @@ const chainMock = {
   filter: mockFilter,
   or: mockOr,
   in: mockIn,
+  upsert: mockUpsert,
+  update: mockUpdate,
 }
 
 // each mock returns chainMock for chaining
@@ -40,6 +46,8 @@ beforeEach(() => {
   mockFilter.mockReturnValue(chainMock)
   mockOr.mockReturnValue(chainMock)
   mockIn.mockReturnValue(chainMock)
+  mockUpsert.mockReturnValue(chainMock)
+  mockUpdate.mockReturnValue(chainMock)
 })
 
 const mockFrom = jest.fn().mockReturnValue(chainMock)
@@ -340,5 +348,74 @@ describe("getAllPendingActionsWithContext", () => {
     mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
     mockOr.mockResolvedValueOnce({ data: null, error: { message: "runs error" } })
     await expect(getAllPendingActionsWithContext("user123")).rejects.toThrow("runs error")
+  })
+})
+
+describe("getRepoConfigOverrides", () => {
+  it("returns overrides when found", async () => {
+    mockSingle.mockResolvedValueOnce({ data: { config_overrides: "repo rules" }, error: null })
+
+    const result = await getRepoConfigOverrides("acme", "api")
+
+    expect(mockFrom).toHaveBeenCalledWith("enrolled_repos")
+    expect(mockEq).toHaveBeenCalledWith("owner", "acme")
+    expect(mockEq).toHaveBeenCalledWith("repo", "api")
+    expect(result).toBe("repo rules")
+  })
+
+  it("returns null when not found", async () => {
+    mockSingle.mockResolvedValueOnce({ data: null, error: { code: "PGRST116" } })
+
+    const result = await getRepoConfigOverrides("acme", "api")
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null when config_overrides is null", async () => {
+    mockSingle.mockResolvedValueOnce({ data: { config_overrides: null }, error: null })
+
+    const result = await getRepoConfigOverrides("acme", "api")
+
+    expect(result).toBeNull()
+  })
+
+  it("throws on unexpected error", async () => {
+    mockSingle.mockResolvedValueOnce({ data: null, error: { message: "DB error" } })
+
+    await expect(getRepoConfigOverrides("acme", "api")).rejects.toThrow("DB error")
+  })
+})
+
+describe("updateRepoConfigOverrides", () => {
+  it("updates with correct args including installedBy filter", async () => {
+    mockEq.mockReturnValueOnce(chainMock)
+    mockEq.mockReturnValueOnce(chainMock)
+    mockSelect.mockResolvedValueOnce({ data: [{ id: 1 }], error: null })
+
+    await updateRepoConfigOverrides("acme", "api", "repo rules", "alice")
+
+    expect(mockFrom).toHaveBeenCalledWith("enrolled_repos")
+    expect(mockUpdate).toHaveBeenCalledWith({ config_overrides: "repo rules" })
+    expect(mockEq).toHaveBeenCalledWith("owner", "acme")
+    expect(mockEq).toHaveBeenCalledWith("repo", "api")
+    expect(mockEq).toHaveBeenCalledWith("installed_by", "alice")
+  })
+
+  it("throws when no matching repo found", async () => {
+    mockEq.mockReturnValueOnce(chainMock)
+    mockEq.mockReturnValueOnce(chainMock)
+    mockSelect.mockResolvedValueOnce({ data: [], error: null })
+
+    await expect(updateRepoConfigOverrides("acme", "api", "rules", "alice")).rejects.toThrow(
+      "Repo not found or not enrolled by this user"
+    )
+  })
+
+  it("throws on DB error", async () => {
+    mockEq.mockReturnValueOnce(chainMock)
+    mockEq.mockReturnValueOnce(chainMock)
+    mockSelect.mockResolvedValueOnce({ data: null, error: { message: "update failed" } })
+
+    await expect(updateRepoConfigOverrides("acme", "api", "rules", "alice")).rejects.toThrow("update failed")
   })
 })
