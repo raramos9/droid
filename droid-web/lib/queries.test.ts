@@ -87,7 +87,7 @@ describe("getEnrolledRepos", () => {
 
 describe("getRunsForRepo", () => {
   it("queries agent_runs filtered by owner and repo", async () => {
-    mockOrder.mockResolvedValueOnce({ data: [], error: null })
+    mockLimit.mockResolvedValueOnce({ data: [], error: null })
 
     await getRunsForRepo("acme", "api")
 
@@ -97,9 +97,17 @@ describe("getRunsForRepo", () => {
     expect(mockOrder).toHaveBeenCalledWith("updated_at", { ascending: false })
   })
 
+  it("applies a limit of 100 to prevent loading all runs", async () => {
+    mockLimit.mockResolvedValueOnce({ data: [], error: null })
+
+    await getRunsForRepo("acme", "api")
+
+    expect(mockLimit).toHaveBeenCalledWith(100)
+  })
+
   it("returns runs array on success", async () => {
     const runs = [{ run_id: "run-1", status: "completed" }]
-    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+    mockLimit.mockResolvedValueOnce({ data: runs, error: null })
 
     const result = await getRunsForRepo("acme", "api")
 
@@ -107,7 +115,7 @@ describe("getRunsForRepo", () => {
   })
 
   it("throws on Supabase error", async () => {
-    mockOrder.mockResolvedValueOnce({ data: null, error: { message: "DB error" } })
+    mockLimit.mockResolvedValueOnce({ data: null, error: { message: "DB error" } })
 
     await expect(getRunsForRepo("acme", "api")).rejects.toThrow("DB error")
   })
@@ -169,7 +177,7 @@ describe("getRunsMapByIssueNumber", () => {
       { run_id: "run-1", goal: { context: { issueNumber: 10 } }, status: "completed" },
       { run_id: "run-2", goal: { context: { issueNumber: 20 } }, status: "running" },
     ]
-    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+    mockLimit.mockResolvedValueOnce({ data: runs, error: null })
 
     const map = await getRunsMapByIssueNumber("acme", "api")
 
@@ -179,7 +187,7 @@ describe("getRunsMapByIssueNumber", () => {
   })
 
   it("returns empty map when no runs exist", async () => {
-    mockOrder.mockResolvedValueOnce({ data: [], error: null })
+    mockLimit.mockResolvedValueOnce({ data: [], error: null })
 
     const map = await getRunsMapByIssueNumber("acme", "api")
 
@@ -192,7 +200,7 @@ describe("getRunsMapByIssueNumber", () => {
       { run_id: "run-2", goal: { context: {} }, status: "running" },
       { run_id: "run-3", goal: {}, status: "failed" },
     ]
-    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+    mockLimit.mockResolvedValueOnce({ data: runs, error: null })
 
     const map = await getRunsMapByIssueNumber("acme", "api")
 
@@ -205,7 +213,7 @@ describe("getRunsMapByIssueNumber", () => {
       { run_id: "run-1", goal: { context: { issueNumber: 10 } }, status: "completed" },
       { run_id: "run-2", goal: { context: { issueNumber: 10 } }, status: "running" },
     ]
-    mockOrder.mockResolvedValueOnce({ data: runs, error: null })
+    mockLimit.mockResolvedValueOnce({ data: runs, error: null })
 
     const map = await getRunsMapByIssueNumber("acme", "api")
 
@@ -223,49 +231,40 @@ describe("getPendingActionsCount", () => {
     expect(result).toBe(0)
   })
 
-  it("returns 0 when no runs for enrolled repos", async () => {
+  it("uses a join query on pending_actions instead of separate runs query", async () => {
     // Step 1: getEnrolledRepos
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    // Step 2: pending_actions join agent_runs
+    mockEq.mockResolvedValueOnce({ data: [], error: null })
+
+    await getPendingActionsCount("user123")
+
+    const fromCalls = mockFrom.mock.calls.map((c: unknown[]) => c[0])
+    expect(fromCalls).toContain("pending_actions")
+    expect(fromCalls).not.toContain("agent_runs")
+  })
+
+  it("returns count of pending actions filtered to enrolled repos", async () => {
+    // Step 1: getEnrolledRepos
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    // Step 2: pending_actions with join — returns 3 actions for enrolled repo
     mockEq.mockResolvedValueOnce({
-      data: [{ owner: "acme", repo: "api" }],
+      data: [
+        { id: 1, agent_runs: { repo_owner: "acme", repo_name: "api" } },
+        { id: 2, agent_runs: { repo_owner: "acme", repo_name: "api" } },
+        { id: 3, agent_runs: { repo_owner: "other", repo_name: "repo" } },
+      ],
       error: null,
     })
-    // Step 2: get run_ids
-    mockOr.mockResolvedValueOnce({ data: [], error: null })
 
     const result = await getPendingActionsCount("user123")
 
-    expect(result).toBe(0)
+    expect(result).toBe(2)
   })
 
-  it("returns count of pending actions across all enrolled repos", async () => {
-    // Step 1: getEnrolledRepos
-    mockEq.mockResolvedValueOnce({
-      data: [{ owner: "acme", repo: "api" }],
-      error: null,
-    })
-    // Step 2: get run_ids
-    mockOr.mockResolvedValueOnce({
-      data: [{ run_id: "run-1" }, { run_id: "run-2" }],
-      error: null,
-    })
-    // Step 3: count pending actions
-    mockEq.mockResolvedValueOnce({ count: 5, error: null })
-
-    const result = await getPendingActionsCount("user123")
-
-    expect(result).toBe(5)
-  })
-
-  it("returns 0 when count is null", async () => {
-    mockEq.mockResolvedValueOnce({
-      data: [{ owner: "acme", repo: "api" }],
-      error: null,
-    })
-    mockOr.mockResolvedValueOnce({
-      data: [{ run_id: "run-1" }],
-      error: null,
-    })
-    mockEq.mockResolvedValueOnce({ count: null, error: null })
+  it("returns 0 when join query returns empty data", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    mockEq.mockResolvedValueOnce({ data: [], error: null })
 
     const result = await getPendingActionsCount("user123")
 
@@ -278,14 +277,11 @@ describe("getPendingActionsCount", () => {
     await expect(getPendingActionsCount("user123")).rejects.toThrow("DB error")
   })
 
-  it("throws when fetching runs fails", async () => {
-    mockEq.mockResolvedValueOnce({
-      data: [{ owner: "acme", repo: "api" }],
-      error: null,
-    })
-    mockOr.mockResolvedValueOnce({ data: null, error: { message: "runs error" } })
+  it("throws when pending actions query fails", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    mockEq.mockResolvedValueOnce({ data: null, error: { message: "actions error" } })
 
-    await expect(getPendingActionsCount("user123")).rejects.toThrow("runs error")
+    await expect(getPendingActionsCount("user123")).rejects.toThrow("actions error")
   })
 })
 
@@ -296,35 +292,43 @@ describe("getAllPendingActionsWithContext", () => {
     expect(result).toEqual([])
   })
 
-  it("returns empty array when no runs for enrolled repos", async () => {
+  it("uses join query on pending_actions instead of separate runs query", async () => {
     mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
-    mockOr.mockResolvedValueOnce({ data: [], error: null })
+    mockOrder.mockResolvedValueOnce({ data: [], error: null })
+
+    await getAllPendingActionsWithContext("user123")
+
+    const fromCalls = mockFrom.mock.calls.map((c: unknown[]) => c[0])
+    expect(fromCalls).toContain("pending_actions")
+    expect(fromCalls).not.toContain("agent_runs")
+  })
+
+  it("returns empty array when join query returns no actions", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    mockOrder.mockResolvedValueOnce({ data: [], error: null })
     const result = await getAllPendingActionsWithContext("user123")
     expect(result).toEqual([])
   })
 
-  it("enriches pending actions with repo context", async () => {
-    // Step 1: enrolled repos
-    mockEq.mockResolvedValueOnce({
-      data: [{ owner: "acme", repo: "api" }],
-      error: null,
-    })
-    // Step 2: runs
-    mockOr.mockResolvedValueOnce({
-      data: [
-        {
-          run_id: "run-1",
-          repo_owner: "acme",
-          repo_name: "api",
-          goal: { context: { issueNumber: 5, title: "Fix bug" } },
-        },
-      ],
-      error: null,
-    })
-    // Step 3: pending actions
+  it("enriches pending actions with repo context from joined run", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
     mockOrder.mockResolvedValueOnce({
       data: [
-        { id: 1, run_id: "run-1", tool: "pushCode", args: {}, status: "pending", tool_use_id: "tui-1", created_at: "2026-01-01" },
+        {
+          id: 1,
+          run_id: "run-1",
+          tool: "pushCode",
+          args: {},
+          status: "pending",
+          tool_use_id: "tui-1",
+          created_at: "2026-01-01",
+          agent_runs: {
+            run_id: "run-1",
+            repo_owner: "acme",
+            repo_name: "api",
+            goal: { context: { issueNumber: 5, title: "Fix bug" } },
+          },
+        },
       ],
       error: null,
     })
@@ -339,15 +343,39 @@ describe("getAllPendingActionsWithContext", () => {
     expect(result[0].tool).toBe("pushCode")
   })
 
+  it("filters out actions for repos not in enrolled set", async () => {
+    mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
+    mockOrder.mockResolvedValueOnce({
+      data: [
+        {
+          id: 1, run_id: "run-1", tool: "pushCode", args: {}, status: "pending",
+          tool_use_id: "tui-1", created_at: "2026-01-01",
+          agent_runs: { run_id: "run-1", repo_owner: "acme", repo_name: "api", goal: {} },
+        },
+        {
+          id: 2, run_id: "run-2", tool: "pushCode", args: {}, status: "pending",
+          tool_use_id: "tui-2", created_at: "2026-01-01",
+          agent_runs: { run_id: "run-2", repo_owner: "other", repo_name: "repo", goal: {} },
+        },
+      ],
+      error: null,
+    })
+
+    const result = await getAllPendingActionsWithContext("user123")
+
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe(1)
+  })
+
   it("throws when getEnrolledRepos fails", async () => {
     mockEq.mockResolvedValueOnce({ data: null, error: { message: "DB error" } })
     await expect(getAllPendingActionsWithContext("user123")).rejects.toThrow("DB error")
   })
 
-  it("throws when fetching runs fails", async () => {
+  it("throws when pending actions query fails", async () => {
     mockEq.mockResolvedValueOnce({ data: [{ owner: "acme", repo: "api" }], error: null })
-    mockOr.mockResolvedValueOnce({ data: null, error: { message: "runs error" } })
-    await expect(getAllPendingActionsWithContext("user123")).rejects.toThrow("runs error")
+    mockOrder.mockResolvedValueOnce({ data: null, error: { message: "actions error" } })
+    await expect(getAllPendingActionsWithContext("user123")).rejects.toThrow("actions error")
   })
 })
 
