@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { Octokit } from "@octokit/rest"
 import { supabase } from "@/lib/supabase"
+import { mapSupabaseError } from "@/lib/error-messages"
 
 const WORKER_URL = process.env.DROID_WORKER_URL ?? "http://localhost:8787"
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: mapSupabaseError(error) }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true })
