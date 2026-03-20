@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { getRunsForRepo, getRepoConfigOverrides, getEnrolledRepos } from "@/lib/queries"
+import { getRunsMapByIssueNumber, getRepoConfigOverrides, getEnrolledRepos } from "@/lib/queries"
 import { RepoTabs } from "@/components/RepoTabs"
 import { TopBar } from "@/components/layout/TopBar"
 import { RepoConfigSection } from "@/components/RepoConfigSection"
@@ -19,21 +19,14 @@ export default async function RepoDetailPage({ params }: Props) {
   const enrolled = installedBy ? await getEnrolledRepos(installedBy) : []
   const ownsRepo = enrolled.some((r) => r.owner === owner && r.repo === repo)
 
-  const [runs, configOverrides] = await Promise.all([
-    getRunsForRepo(owner, repo),
+  const [runsMapData, configOverrides] = await Promise.all([
+    getRunsMapByIssueNumber(owner, repo),
     ownsRepo ? getRepoConfigOverrides(owner, repo).catch(() => null) : Promise.resolve(null),
   ])
 
-  const runsMap: Record<string, AgentRun> = {}
-  for (const run of runs) {
-    const issueNumber = run.goal?.context?.issueNumber
-    const key = typeof issueNumber === "number"
-      ? issueNumber.toString()
-      : run.run_id
-    if (!(key in runsMap)) {
-      runsMap[key] = run
-    }
-  }
+  const runsMap: Record<string, AgentRun> = Object.fromEntries(
+    Array.from(runsMapData.entries()).map(([k, v]) => [k.toString(), v])
+  )
 
   return (
     <>
