@@ -111,7 +111,6 @@ export function SidebarNav({ repos, inboxCount, collapsed }: Props) {
         badge={inboxCount}
         collapsed={collapsed}
       />
-
       {repos.length > 0 && (
         <div style={{ marginTop: 16 }}>
           {!collapsed && (

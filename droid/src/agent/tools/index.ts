@@ -25,13 +25,21 @@ export class GatedActionError extends Error {
   }
 }
 
-// Sanitize a path arg: only allow alphanumeric, slashes, dots, underscores, hyphens.
-// Also blocks path traversal via "..".
-function sanitizePath(p: unknown): string {
+const WORKSPACE_ROOT = "/workspace/repo";
+
+// Resolve a path to within WORKSPACE_ROOT.
+// Relative paths are prefixed with WORKSPACE_ROOT.
+// Absolute paths must start with WORKSPACE_ROOT + "/" or equal WORKSPACE_ROOT exactly.
+function resolveWorkspacePath(p: unknown): string {
   const s = String(p);
   if (s.includes("..")) throw new Error(`Unsafe path argument: ${s}`);
   if (!/^[a-zA-Z0-9/_.\-]+$/.test(s)) throw new Error(`Unsafe path argument: ${s}`);
-  return s;
+
+  const resolved = s.startsWith("/") ? s : `${WORKSPACE_ROOT}/${s}`;
+  if (resolved !== WORKSPACE_ROOT && !resolved.startsWith(`${WORKSPACE_ROOT}/`)) {
+    throw new Error(`Path outside workspace root: ${s}`);
+  }
+  return resolved;
 }
 
 const COMMAND_DENYLIST = /\b(curl|wget|nc|netcat|ssh|scp|rsync|env|printenv|eval)\b/;
@@ -76,12 +84,17 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
         },
       },
       execute: async (args) => {
-        const safePath = sanitizePath(args.filePath);
+        let safePath: string;
+        try {
+          safePath = resolveWorkspacePath(args.filePath);
+        } catch (err) {
+          return `Error: could not read file "${args.filePath}" — ${(err as Error).message}`;
+        }
         try {
           const file = await sandbox.readFile(safePath);
           return file.content;
-        } catch {
-          throw new Error("Error reading file");
+        } catch (err) {
+          return `Error: could not read file "${safePath}" — ${(err as Error).message}`;
         }
       },
     },
@@ -100,9 +113,10 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
         },
       },
       execute: async (args) => {
+        const safePath = resolveWorkspacePath(args.filePath);
         try {
-          await sandbox.writeFile(sanitizePath(args.filePath), args.content as string);
-          return `File written successfully: ${args.filePath}`;
+          await sandbox.writeFile(safePath, args.content as string);
+          return `File written successfully: ${safePath}`;
         } catch {
           throw new Error("Error writing file");
         }
@@ -120,7 +134,7 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
         },
       },
       execute: async (args) => {
-        const dir = sanitizePath(args.dirPath);
+        const dir = resolveWorkspacePath(args.dirPath);
         const result = await sandbox.exec(`ls -la ${dir}`);
         return result.stdout || result.stderr;
       },
@@ -140,11 +154,11 @@ export function createFilesystemTools(sandbox: ToolContext["sandbox"]): DroidToo
         },
       },
       execute: async (args) => {
-        const dir = sanitizePath(args.dirPath);
-        // Strip control characters, then escape single quotes
-        const cleanQuery = String(args.query).replace(/[\x00-\x1f\x7f]/g, "").replace(/'/g, "'\\''");
+        const dir = resolveWorkspacePath(args.dirPath);
+        const cleanQuery = String(args.query).replace(/[\x00-\x1f\x7f]/g, "");
+        await sandbox.writeFile("/tmp/droid-grep-pattern", cleanQuery);
         const result = await sandbox.exec(
-          `grep -r --include="*.ts" -n -e '${cleanQuery}' -- ${dir} || true`,
+          `grep -r --include="*.ts" -n -f /tmp/droid-grep-pattern -- ${dir} || true`,
         );
         return result.stdout || "No matches found";
       },
@@ -171,7 +185,7 @@ export function createShellTools(sandbox: ToolContext["sandbox"]): DroidTool[] {
       execute: async (args) => {
         assertCommandAllowed(args.command as string);
         const result = await sandbox.exec(args.command as string, {
-          cwd: sanitizePath(args.cwd),
+          cwd: resolveWorkspacePath(args.cwd),
         });
         return `exit code: ${result.exitCode}\nstdout: ${result.stdout}\nstderr: ${result.stderr}`;
       },
@@ -269,17 +283,21 @@ export function createGithubReadTools(octokit: ToolContext["octokit"]): DroidToo
         },
       },
       execute: async (args) => {
-        const { data } = await octokit.repos.compareCommits({
-          owner: args.owner,
-          repo: args.repo,
-          base: args.base,
-          head: args.head,
-        });
-        const files = (data.files || []).map((f: { filename: string; patch?: string }) => ({
-          filename: f.filename,
-          patch: f.patch,
-        }));
-        return JSON.stringify(files);
+        try {
+          const { data } = await octokit.repos.compareCommits({
+            owner: args.owner as string,
+            repo: args.repo as string,
+            base: args.base as string,
+            head: args.head as string,
+          });
+          const files = (data.files || []).map((f: { filename: string; patch?: string }) => ({
+            filename: f.filename,
+            patch: f.patch,
+          }));
+          return JSON.stringify(files);
+        } catch (err) {
+          return `Error: could not compare "${args.base}...${args.head}" — ${(err as Error).message}. Make sure both refs exist.`;
+        }
       },
     },
   ];

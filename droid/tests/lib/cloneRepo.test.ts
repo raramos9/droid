@@ -66,6 +66,24 @@ describe("cloneRepo", () => {
     await expect(cloneRepo(sandbox, "acme", "repo", "gh-tok")).rejects.toThrow(/credential helper/i);
   });
 
+  it("includes -b flag when branch is provided", async () => {
+    const sandbox = makeSandbox();
+    await cloneRepo(sandbox, "acme", "repo", "gh-tok", "feat/my-branch");
+    const cloneCmd = sandbox.exec.mock.calls
+      .map((c: string[]) => c[0])
+      .find((cmd) => cmd.includes("git clone"))!;
+    expect(cloneCmd).toContain("-b feat/my-branch");
+  });
+
+  it("omits -b flag when no branch is provided", async () => {
+    const sandbox = makeSandbox();
+    await cloneRepo(sandbox, "acme", "repo", "gh-tok");
+    const cloneCmd = sandbox.exec.mock.calls
+      .map((c: string[]) => c[0])
+      .find((cmd) => cmd.includes("git clone"))!;
+    expect(cloneCmd).not.toContain("-b");
+  });
+
   it("clones the correct owner/repo into the URL", async () => {
     const sandbox = makeSandbox();
     await cloneRepo(sandbox, "myorg", "myproject", "tok");

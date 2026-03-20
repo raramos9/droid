@@ -22,6 +22,16 @@ vi.mock("../../src/lib/cloneRepo", () => ({
   cloneRepo: mockCloneRepo,
 }));
 
+const mockLoadRepoConfig = vi.hoisted(() => vi.fn().mockResolvedValue({ userConfig: "", repoOverrides: "" }));
+vi.mock("../../src/agent/config", () => ({
+  loadRepoConfig: mockLoadRepoConfig,
+}));
+
+const mockLoadDroidMd = vi.hoisted(() => vi.fn().mockResolvedValue(""));
+vi.mock("../../src/agent/droidMd", () => ({
+  loadDroidMd: mockLoadDroidMd,
+}));
+
 import { getSandbox } from "@cloudflare/sandbox";
 import { cloneRepo } from "../../src/lib/cloneRepo";
 import { runDroidAgent } from "../../src/harness/index";
@@ -68,6 +78,7 @@ describe("runDroidAgent", () => {
     expect(mockRunAgent).toHaveBeenCalledWith(
       pushGoal,
       expect.objectContaining({ anthropicApiKey: "ak" }),
+      expect.anything(),
     );
   });
 
@@ -111,18 +122,24 @@ describe("runDroidAgent", () => {
   it("works for pull_request goal", async () => {
     mockRunAgent.mockResolvedValueOnce({ ...completedRun, goal: prGoal });
     await runDroidAgent(prGoal, env);
-    expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything());
+    expect(mockRunAgent).toHaveBeenCalledWith(prGoal, expect.anything(), expect.anything());
   });
 
-  it("calls cloneRepo with sandbox, owner, repo, and GITHUB_TOKEN before runAgent", async () => {
+  it("calls cloneRepo with sandbox, owner, repo, GITHUB_TOKEN, and branch before runAgent", async () => {
     await runDroidAgent(pushGoal, env);
-    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok");
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", "main");
     expect(mockCloneRepo).toHaveBeenCalledBefore(mockRunAgent as any);
   });
 
-  it("clones repo for pull_request goal too", async () => {
+  it("clones repo for pull_request goal without a branch", async () => {
     await runDroidAgent(prGoal, env);
-    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok");
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", undefined);
+  });
+
+  it("does not pass a branch for tag push refs", async () => {
+    const tagGoal = { ...pushGoal, context: { sha: "abc123", ref: "refs/tags/v1.0.0" } };
+    await runDroidAgent(tagGoal, env);
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", undefined);
   });
 
   it("returns failed run and destroys sandbox when cloneRepo throws", async () => {
@@ -131,5 +148,51 @@ describe("runDroidAgent", () => {
     expect(result.status).toBe("failed");
     expect(result.error).toContain("clone failed");
     expect(mockSandbox.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("calls loadRepoConfig with owner, repo, and supabase creds", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockLoadRepoConfig).toHaveBeenCalledWith(
+      "acme",
+      "repo",
+      "https://test.supabase.co",
+      "svc-key",
+    );
+  });
+
+  it("passes composed systemPrompt to runAgent when config is loaded", async () => {
+    mockLoadRepoConfig.mockResolvedValueOnce({ userConfig: "my rules", repoOverrides: "" });
+    await runDroidAgent(pushGoal, env);
+    const opts = mockRunAgent.mock.calls[0][2];
+    expect(opts.systemPrompt).toContain("my rules");
+  });
+
+  it("falls back gracefully when loadRepoConfig throws", async () => {
+    mockLoadRepoConfig.mockRejectedValueOnce(new Error("supabase down"));
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("completed");
+    // systemPrompt is always defined now — falls back to base SYSTEM_PROMPT
+    const opts = mockRunAgent.mock.calls[0][2];
+    expect(opts.systemPrompt).toBeDefined();
+  });
+
+  it("calls loadDroidMd with the sandbox after cloneRepo", async () => {
+    await runDroidAgent(pushGoal, env);
+    expect(mockLoadDroidMd).toHaveBeenCalledWith(mockSandbox);
+    expect(mockLoadDroidMd).toHaveBeenCalledAfter(mockCloneRepo as any);
+  });
+
+  it("includes droidMd content in systemPrompt when present", async () => {
+    mockLoadDroidMd.mockResolvedValueOnce("# Repo rules\nBe terse.");
+    await runDroidAgent(pushGoal, env);
+    const opts = mockRunAgent.mock.calls[0][2];
+    expect(opts.systemPrompt).toContain("Be terse.");
+  });
+
+  it("falls back gracefully when loadDroidMd throws", async () => {
+    mockLoadDroidMd.mockRejectedValueOnce(new Error("sandbox error"));
+    const result = await runDroidAgent(pushGoal, env);
+    expect(result.status).toBe("completed");
+    expect(mockRunAgent).toHaveBeenCalled();
   });
 });

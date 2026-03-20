@@ -44,26 +44,28 @@ describe("filesystem tools", () => {
     const sandbox = makeSandbox();
     const tools = createFilesystemTools(sandbox);
     const readFile = tools.find((t) => t.name === "readFile")!;
-    const result = await readFile.execute({ filePath: "/workspace/foo.ts" });
+    const result = await readFile.execute({ filePath: "/workspace/repo/foo.ts" });
     expect(result).toBe("file content");
-    expect(sandbox.readFile).toHaveBeenCalledWith("/workspace/foo.ts");
+    expect(sandbox.readFile).toHaveBeenCalledWith("/workspace/repo/foo.ts");
   });
 
-  it("readFile throws on sandbox error", async () => {
+  it("readFile returns error string on sandbox error", async () => {
     const sandbox = makeSandbox();
     sandbox.readFile.mockRejectedValueOnce(new Error("not found"));
     const tools = createFilesystemTools(sandbox);
     const readFile = tools.find((t) => t.name === "readFile")!;
-    await expect(readFile.execute({ filePath: "/missing.ts" })).rejects.toThrow("Error reading file");
+    const result = await readFile.execute({ filePath: "/workspace/repo/missing.ts" });
+    expect(result).toContain("Error: could not read file");
+    expect(result).toContain("not found");
   });
 
   it("writeFile writes content and returns confirmation", async () => {
     const sandbox = makeSandbox();
     const tools = createFilesystemTools(sandbox);
     const writeFile = tools.find((t) => t.name === "writeFile")!;
-    const result = await writeFile.execute({ filePath: "/workspace/out.ts", content: "const x = 1" });
+    const result = await writeFile.execute({ filePath: "/workspace/repo/out.ts", content: "const x = 1" });
     expect(result).toContain("written");
-    expect(sandbox.writeFile).toHaveBeenCalledWith("/workspace/out.ts", "const x = 1");
+    expect(sandbox.writeFile).toHaveBeenCalledWith("/workspace/repo/out.ts", "const x = 1");
   });
 
   it("writeFile throws on sandbox error", async () => {
@@ -71,7 +73,7 @@ describe("filesystem tools", () => {
     sandbox.writeFile.mockRejectedValueOnce(new Error("disk full"));
     const tools = createFilesystemTools(sandbox);
     const writeFile = tools.find((t) => t.name === "writeFile")!;
-    await expect(writeFile.execute({ filePath: "/foo.ts", content: "" })).rejects.toThrow();
+    await expect(writeFile.execute({ filePath: "/workspace/repo/foo.ts", content: "" })).rejects.toThrow();
   });
 
   it("listFiles executes ls and returns stdout", async () => {
@@ -79,9 +81,9 @@ describe("filesystem tools", () => {
     sandbox.exec.mockResolvedValueOnce({ stdout: "a.ts\nb.ts\n", stderr: "", exitCode: 0 });
     const tools = createFilesystemTools(sandbox);
     const listFiles = tools.find((t) => t.name === "listFiles")!;
-    const result = await listFiles.execute({ dirPath: "/workspace" });
+    const result = await listFiles.execute({ dirPath: "/workspace/repo" });
     expect(result).toContain("a.ts");
-    expect(sandbox.exec).toHaveBeenCalledWith(expect.stringContaining("/workspace"));
+    expect(sandbox.exec).toHaveBeenCalledWith(expect.stringContaining("/workspace/repo"));
   });
 
   it("searchCode runs grep and returns matches", async () => {
@@ -89,7 +91,7 @@ describe("filesystem tools", () => {
     sandbox.exec.mockResolvedValueOnce({ stdout: "foo.ts:1:match\n", stderr: "", exitCode: 0 });
     const tools = createFilesystemTools(sandbox);
     const searchCode = tools.find((t) => t.name === "searchCode")!;
-    const result = await searchCode.execute({ query: "TODO", dirPath: "/workspace" });
+    const result = await searchCode.execute({ query: "TODO", dirPath: "/workspace/repo" });
     expect(result).toContain("foo.ts");
   });
 
@@ -102,11 +104,13 @@ describe("filesystem tools", () => {
     }
   });
 
-  it("readFile rejects path traversal (..)", async () => {
+  it("readFile returns error string for path traversal (..)", async () => {
     const sandbox = makeSandbox();
     const tools = createFilesystemTools(sandbox);
     const readFile = tools.find((t) => t.name === "readFile")!;
-    await expect(readFile.execute({ filePath: "../../etc/passwd" })).rejects.toThrow(/unsafe/i);
+    const result = await readFile.execute({ filePath: "../../etc/passwd" });
+    expect(result).toMatch(/unsafe/i);
+    expect(sandbox.readFile).not.toHaveBeenCalled();
   });
 
   it("listFiles rejects path traversal (..)", async () => {
@@ -116,25 +120,25 @@ describe("filesystem tools", () => {
     await expect(listFiles.execute({ dirPath: "../secret" })).rejects.toThrow(/unsafe/i);
   });
 
-  it("searchCode uses -e flag and -- terminator", async () => {
+  it("searchCode uses -f flag and -- terminator", async () => {
     const sandbox = makeSandbox();
     const tools = createFilesystemTools(sandbox);
     const searchCode = tools.find((t) => t.name === "searchCode")!;
-    await searchCode.execute({ query: "TODO", dirPath: "/workspace" });
+    await searchCode.execute({ query: "TODO", dirPath: "/workspace/repo" });
     const cmd = sandbox.exec.mock.calls[0][0] as string;
-    expect(cmd).toContain("-e ");
+    expect(cmd).toContain("-f ");
     expect(cmd).toContain("-- ");
   });
 
-  it("searchCode strips control characters from query", async () => {
+  it("searchCode strips control characters from query before writing to file", async () => {
     const sandbox = makeSandbox();
     const tools = createFilesystemTools(sandbox);
     const searchCode = tools.find((t) => t.name === "searchCode")!;
-    await searchCode.execute({ query: "TODO\x00\x01\x1f", dirPath: "/workspace" });
-    const cmd = sandbox.exec.mock.calls[0][0] as string;
-    expect(cmd).not.toContain("\x00");
-    expect(cmd).not.toContain("\x01");
-    expect(cmd).not.toContain("\x1f");
+    await searchCode.execute({ query: "TODO\x00\x01\x1f", dirPath: "/workspace/repo" });
+    const writtenPattern = sandbox.writeFile.mock.calls[0][1] as string;
+    expect(writtenPattern).not.toContain("\x00");
+    expect(writtenPattern).not.toContain("\x01");
+    expect(writtenPattern).not.toContain("\x1f");
   });
 });
 

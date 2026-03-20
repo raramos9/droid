@@ -1,8 +1,9 @@
 import { proxyToSandbox } from "@cloudflare/sandbox";
 import { verifySignature } from "./lib/verify";
+import { timingSafeCompare } from "./lib/crypto";
 import { fromGithubWebhook } from "./triggers/github";
 import { runDroidAgent } from "./harness/index";
-import { loadCheckpoint } from "./agent/checkpoint";
+import { loadCheckpoint, createPendingRun } from "./agent/checkpoint";
 import { type Env } from "./types/env";
 
 export { Sandbox } from "@cloudflare/sandbox";
@@ -46,14 +47,15 @@ export default {
         return Response.json({ message: "Event ignored" });
       }
 
-      ctx.waitUntil(runDroidAgent(goal, env).catch((err) => console.error("runDroidAgent failed:", err)));
+      const pendingRunId = await createPendingRun(goal, env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
+      ctx.waitUntil(runDroidAgent(goal, env, { existingRunId: pendingRunId }).catch((err) => console.error("runDroidAgent failed:", err)));
       return Response.json({ message: `Droid started for ${goal.type}` });
     }
 
     // ── Dispatch (on-demand agent trigger from dashboard) ────────────────────
     if (url.pathname === "/dispatch" && request.method === "POST") {
-      const authHeader = request.headers.get("authorization");
-      if (authHeader !== `Bearer ${env.RESUME_API_KEY}`) {
+      const authHeader = request.headers.get("authorization") ?? "";
+      if (!await timingSafeCompare(authHeader, `Bearer ${env.RESUME_API_KEY}`)) {
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }
 
@@ -86,15 +88,16 @@ export default {
         goal = { type: "pull_request", repo: repoObj, context: { prNumber, title: "Dispatched from dashboard" } };
       }
 
-      ctx.waitUntil(runDroidAgent(goal, env).catch((err) => console.error("dispatch runDroidAgent failed:", err)));
+      const dispatchRunId = await createPendingRun(goal, env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
+      ctx.waitUntil(runDroidAgent(goal, env, { existingRunId: dispatchRunId }).catch((err) => console.error("dispatch runDroidAgent failed:", err)));
       return Response.json({ message: "Droid dispatched" });
     }
 
     // ── Resume (called by dashboard after action approval) ───────────────────
     const resumeMatch = url.pathname.match(/^\/resume\/([a-zA-Z0-9\-]+)$/);
     if (resumeMatch && request.method === "POST") {
-      const authHeader = request.headers.get("authorization");
-      if (authHeader !== `Bearer ${env.RESUME_API_KEY}`) {
+      const authHeader = request.headers.get("authorization") ?? "";
+      if (!await timingSafeCompare(authHeader, `Bearer ${env.RESUME_API_KEY}`)) {
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }
 

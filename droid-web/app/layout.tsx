@@ -24,7 +24,7 @@ const themeScript = `(function(){var t=localStorage.getItem('theme');if(t==='dar
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${dmSans.variable} ${firaCode.variable} antialiased`}>
         <Script id="theme-init" strategy="beforeInteractive">
           {themeScript}

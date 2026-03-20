@@ -67,7 +67,9 @@ export interface EnrolledRepo {
   webhook_id: number
   installed_by: string
   created_at: string
+  config_overrides?: string | null
 }
+
 
 export interface GitHubIssue {
   number: number

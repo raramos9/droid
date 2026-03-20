@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildGoalMessage, SYSTEM_PROMPT } from "../../src/agent/prompt";
+import { buildGoalMessage, buildSystemPrompt, SYSTEM_PROMPT } from "../../src/agent/prompt";
 import type { Goal } from "../../src/types/agent";
 
 function makeGoal(overrides: Partial<Goal> = {}): Goal {
@@ -84,5 +84,105 @@ describe("buildGoalMessage", () => {
   it("throws for unknown trigger type (exhaustiveness check)", () => {
     const goal = { type: "unknown_type" as any, repo: { owner: "acme", name: "app" }, context: {} };
     expect(() => buildGoalMessage(goal)).toThrow();
+  });
+});
+
+describe("buildSystemPrompt", () => {
+  it("returns base SYSTEM_PROMPT when no configs provided", () => {
+    expect(buildSystemPrompt()).toBe(SYSTEM_PROMPT);
+    expect(buildSystemPrompt("", "", "")).toBe(SYSTEM_PROMPT);
+  });
+
+  it("appends userConfig when provided", () => {
+    const result = buildSystemPrompt("my global rules");
+    expect(result).toContain(SYSTEM_PROMPT);
+    expect(result).toContain("my global rules");
+  });
+
+  it("appends repoOverrides when provided", () => {
+    const result = buildSystemPrompt("", "", "repo-specific rules");
+    expect(result).toContain(SYSTEM_PROMPT);
+    expect(result).toContain("repo-specific rules");
+  });
+
+  it("appends both userConfig and repoOverrides when both provided", () => {
+    const result = buildSystemPrompt("global rules", "", "repo rules");
+    expect(result).toContain("global rules");
+    expect(result).toContain("repo rules");
+  });
+
+  it("repo overrides section comes after userConfig section", () => {
+    const result = buildSystemPrompt("UNIQUE_GLOBAL_MARKER", "", "UNIQUE_REPO_MARKER");
+    expect(result.indexOf("UNIQUE_GLOBAL_MARKER")).toBeLessThan(result.indexOf("UNIQUE_REPO_MARKER"));
+  });
+
+  it("includes section headers to distinguish config sources", () => {
+    const result = buildSystemPrompt("global rules", "", "repo rules");
+    expect(result).toMatch(/user config|global config|custom rules/i);
+  });
+
+  it("appends a defensive reminder when any config is present", () => {
+    const result = buildSystemPrompt("some rules");
+    expect(result).toMatch(/reminder/i);
+    expect(result).toMatch(/must not override/i);
+  });
+
+  it("does not append a defensive reminder when no config provided", () => {
+    const result = buildSystemPrompt();
+    expect(result).not.toMatch(/reminder/i);
+  });
+
+  it("truncates userConfig beyond 50KB", () => {
+    const longConfig = "x".repeat(50 * 1024 + 100);
+    const result = buildSystemPrompt(longConfig);
+    const marker = "## User Config";
+    const start = result.indexOf(marker) + marker.length + 2;
+    const content = result.slice(start).split("\n---\n")[0];
+    expect(content.length).toBeLessThanOrEqual(50 * 1024);
+  });
+
+  it("truncates repoOverrides beyond 20KB", () => {
+    const longOverrides = "y".repeat(20 * 1024 + 100);
+    const result = buildSystemPrompt("", "", longOverrides);
+    const marker = "## Repo-Specific Config";
+    const start = result.indexOf(marker) + marker.length + 2;
+    const content = result.slice(start).split("\n---\n")[0];
+    expect(content.length).toBeLessThanOrEqual(20 * 1024);
+  });
+
+  // .droid.md tests
+  it("appends droidMd content when provided", () => {
+    const result = buildSystemPrompt("", "repo droid rules", "");
+    expect(result).toContain("repo droid rules");
+  });
+
+  it("droidMd section appears after userConfig and before repoOverrides", () => {
+    const result = buildSystemPrompt("GLOBAL_MARKER", "DROID_MD_MARKER", "REPO_MARKER");
+    expect(result.indexOf("GLOBAL_MARKER")).toBeLessThan(result.indexOf("DROID_MD_MARKER"));
+    expect(result.indexOf("DROID_MD_MARKER")).toBeLessThan(result.indexOf("REPO_MARKER"));
+  });
+
+  it("skips droidMd section when empty", () => {
+    const result = buildSystemPrompt("", "", "");
+    expect(result).not.toMatch(/\.droid\.md|repo .droid/i);
+  });
+
+  it("includes droidMd section header when content is present", () => {
+    const result = buildSystemPrompt("", "some rules", "");
+    expect(result).toMatch(/droid\.md/i);
+  });
+
+  it("truncates droidMd beyond 20KB", () => {
+    const longDroidMd = "z".repeat(20 * 1024 + 100);
+    const result = buildSystemPrompt("", longDroidMd, "");
+    const marker = ".droid.md";
+    const start = result.indexOf(marker) + marker.length + 2;
+    const content = result.slice(start).split("\n---\n")[0];
+    expect(content.length).toBeLessThanOrEqual(20 * 1024);
+  });
+
+  it("defensive reminder appears when only droidMd is present", () => {
+    const result = buildSystemPrompt("", "some droid rules", "");
+    expect(result).toMatch(/reminder/i);
   });
 });
