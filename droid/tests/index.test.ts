@@ -16,6 +16,11 @@ vi.mock("@cloudflare/sandbox", () => ({
 vi.mock("../src/agent/checkpoint", () => ({
   loadCheckpoint: vi.fn(),
   savePendingAction: vi.fn(),
+  createPendingRun: vi.fn().mockResolvedValue("pending-run-id"),
+}));
+
+vi.mock("../src/lib/crypto", () => ({
+  timingSafeCompare: vi.fn().mockImplementation((a: string, b: string) => Promise.resolve(a === b)),
 }));
 
 import worker from "../src/index";
