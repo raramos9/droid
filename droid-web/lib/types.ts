@@ -20,7 +20,7 @@ export interface AgentRun {
   status: AgentRunStatus
   messages: Message[]
   iteration: number
-  artifacts: Record<string, unknown>[]
+  artifacts: string[]
   error: string | null
   updated_at: string
 }
