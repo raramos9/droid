@@ -1,38 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { timingSafeCompare, encryptToken, decryptToken } from "../../src/lib/crypto";
-
-describe("timingSafeCompare", () => {
-  it("returns true for identical strings", async () => {
-    expect(await timingSafeCompare("abc123", "abc123")).toBe(true);
-  });
-
-  it("returns false for different strings of same length", async () => {
-    expect(await timingSafeCompare("abc", "xyz")).toBe(false);
-  });
-
-  it("returns false for different-length strings", async () => {
-    expect(await timingSafeCompare("abc", "abcd")).toBe(false);
-  });
-
-  it("returns false for empty vs non-empty", async () => {
-    expect(await timingSafeCompare("", "a")).toBe(false);
-    expect(await timingSafeCompare("a", "")).toBe(false);
-  });
-
-  it("returns true for empty strings", async () => {
-    expect(await timingSafeCompare("", "")).toBe(true);
-  });
-
-  it("returns false for prefix match", async () => {
-    expect(await timingSafeCompare("secret", "secret-extra")).toBe(false);
-  });
-
-  it("handles long strings correctly", async () => {
-    const key = "a".repeat(128);
-    expect(await timingSafeCompare(key, key)).toBe(true);
-    expect(await timingSafeCompare(key, key.slice(0, -1) + "b")).toBe(false);
-  });
-});
+/**
+ * @jest-environment node
+ */
+import { encryptToken, decryptToken } from "./crypto";
 
 const TEST_HEX_KEY = "a".repeat(64);
 
@@ -44,10 +13,10 @@ describe("encryptToken / decryptToken", () => {
     expect(result).toBe(plaintext);
   });
 
-  it("produces base64-encoded ciphertext and iv", async () => {
+  it("produces valid base64-encoded ciphertext and iv", async () => {
     const { ciphertext, iv } = await encryptToken("hello", TEST_HEX_KEY);
-    expect(() => atob(ciphertext)).not.toThrow();
-    expect(() => atob(iv)).not.toThrow();
+    expect(ciphertext).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    expect(iv).toMatch(/^[A-Za-z0-9+/]+=*$/);
   });
 
   it("IV is unique per call", async () => {
@@ -64,7 +33,9 @@ describe("encryptToken / decryptToken", () => {
 
   it("throws when ciphertext is tampered", async () => {
     const { ciphertext, iv } = await encryptToken("token", TEST_HEX_KEY);
-    const tampered = btoa(atob(ciphertext).slice(0, -4) + "xxxx");
+    const buf = Buffer.from(ciphertext, "base64");
+    buf[buf.length - 1] ^= 0xff;
+    const tampered = buf.toString("base64");
     await expect(decryptToken(tampered, iv, TEST_HEX_KEY)).rejects.toThrow();
   });
 
@@ -78,9 +49,9 @@ describe("encryptToken / decryptToken", () => {
 
   it("throws when IV is tampered", async () => {
     const { ciphertext, iv } = await encryptToken("secret", TEST_HEX_KEY);
-    const ivBytes = Uint8Array.from(atob(iv), (c) => c.charCodeAt(0));
-    ivBytes[0] ^= 0xff;
-    const tamperedIv = btoa(String.fromCharCode(...ivBytes));
+    const ivBuf = Buffer.from(iv, "base64");
+    ivBuf[0] ^= 0xff;
+    const tamperedIv = ivBuf.toString("base64");
     await expect(decryptToken(ciphertext, tamperedIv, TEST_HEX_KEY)).rejects.toThrow();
   });
 

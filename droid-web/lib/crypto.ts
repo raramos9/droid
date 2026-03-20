@@ -1,6 +1,10 @@
 const ENCODER = new TextEncoder();
 const DECODER = new TextDecoder();
 
+// Note: timingSafeCompare is not included here — the Next.js app has no
+// secret-comparison needs today. If that changes, use Node's
+// crypto.timingSafeEqual rather than adding a dependency on this module.
+
 function hexToBytes(hex: string): Uint8Array {
   if (hex.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(hex)) {
     throw new Error("Encryption key must be a 64-char hex string (32 bytes)");
@@ -21,32 +25,15 @@ export async function encryptToken(plaintext: string, hexKey: string): Promise<{
     ENCODER.encode(plaintext),
   );
   return {
-    ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertextBuf))),
-    iv: btoa(String.fromCharCode(...ivBytes)),
+    ciphertext: Buffer.from(ciphertextBuf).toString("base64"),
+    iv: Buffer.from(ivBytes).toString("base64"),
   };
 }
 
 export async function decryptToken(ciphertext: string, iv: string, hexKey: string): Promise<string> {
   const key = await importKey(hexKey);
-  const ciphertextBuf = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
-  const ivBuf = Uint8Array.from(atob(iv), (c) => c.charCodeAt(0));
+  const ciphertextBuf = Buffer.from(ciphertext, "base64");
+  const ivBuf = Buffer.from(iv, "base64");
   const plaintextBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBuf }, key, ciphertextBuf);
   return DECODER.decode(plaintextBuf);
-}
-
-/**
- * Constant-time string comparison using HMAC-SHA256 to prevent timing attacks.
- * A random key is generated per call so an attacker cannot correlate HMAC outputs
- * across invocations, making the comparison safe even when one operand is secret.
- */
-export async function timingSafeCompare(a: string, b: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.generateKey(
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
-
-  const sigA = await crypto.subtle.sign("HMAC", key, encoder.encode(a));
-  return crypto.subtle.verify("HMAC", key, sigA, encoder.encode(b));
 }
