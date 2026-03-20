@@ -3,7 +3,7 @@ import type { Octokit } from "@octokit/rest";
 export type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export type TriggerType = "push" | "issue_created" | "issue_comment" | "pull_request";
-export type AgentStatus = "running" | "paused" | "completed" | "failed";
+export type AgentStatus = "pending" | "running" | "paused" | "completed" | "failed";
 
 export interface Goal {
   type: TriggerType;

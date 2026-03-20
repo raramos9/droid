@@ -1,4 +1,4 @@
-import type { AgentRun, PendingAction } from "../types/agent";
+import type { AgentRun, Goal, PendingAction } from "../types/agent";
 
 function supabaseHeaders(key: string): Record<string, string> {
   return {
@@ -76,6 +76,42 @@ export async function loadCheckpoint(
   const rows: any[] = await res.json();
   if (!rows.length) throw new Error(`No checkpoint found for runId: ${runId}`);
   return rowToRun(rows[0]);
+}
+
+export async function createPendingRun(
+  goal: Goal,
+  supabaseUrl: string,
+  supabaseKey: string,
+): Promise<string> {
+  const runId = crypto.randomUUID();
+  const url = `${supabaseUrl}/rest/v1/agent_runs`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...supabaseHeaders(supabaseKey),
+      "Prefer": "return=minimal",
+    },
+    body: JSON.stringify({
+      run_id: runId,
+      repo_owner: goal.repo.owner,
+      repo_name: goal.repo.name,
+      trigger: goal.type,
+      goal,
+      status: "pending",
+      messages: [],
+      iteration: 0,
+      artifacts: [],
+      error: null,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`createPendingRun failed (${res.status}): ${text}`);
+  }
+
+  return runId;
 }
 
 export async function savePendingAction(

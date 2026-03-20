@@ -8,6 +8,7 @@ import {
   saveCheckpoint,
   loadCheckpoint,
   savePendingAction,
+  createPendingRun,
 } from "../../src/agent/checkpoint";
 
 const SUPABASE_URL = "https://test.supabase.co";
@@ -165,5 +166,45 @@ describe("savePendingAction", () => {
   it("throws when Supabase returns non-ok response", async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: vi.fn().mockResolvedValue("error") });
     await expect(savePendingAction(makePendingAction(), SUPABASE_URL, SUPABASE_KEY)).rejects.toThrow();
+  });
+});
+
+// ── createPendingRun ──────────────────────────────────────────────────────────
+
+describe("createPendingRun", () => {
+  const goal = {
+    type: "issue_created" as const,
+    repo: { owner: "acme", name: "app" },
+    context: { issueNumber: 1, title: "Bug" },
+  };
+
+  it("inserts a row with pending status into agent_runs", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue("") });
+    await createPendingRun(goal, SUPABASE_URL, SUPABASE_KEY);
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toContain("agent_runs");
+    const body = JSON.parse(opts.body);
+    expect(body.status).toBe("pending");
+  });
+
+  it("returns a valid UUID string", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue("") });
+    const runId = await createPendingRun(goal, SUPABASE_URL, SUPABASE_KEY);
+    expect(typeof runId).toBe("string");
+    expect(runId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+
+  it("serializes goal correctly", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue("") });
+    await createPendingRun(goal, SUPABASE_URL, SUPABASE_KEY);
+    const [, opts] = mockFetch.mock.calls[0];
+    const body = JSON.parse(opts.body);
+    expect(body.repo_owner).toBe("acme");
+    expect(body.repo_name).toBe("app");
+  });
+
+  it("throws when Supabase returns non-ok response", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: vi.fn().mockResolvedValue("DB error") });
+    await expect(createPendingRun(goal, SUPABASE_URL, SUPABASE_KEY)).rejects.toThrow();
   });
 });
