@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { Octokit } from "@octokit/rest"
 import { supabase } from "@/lib/supabase"
 import { mapSupabaseError } from "@/lib/error-messages"
+import { upsertUserToken } from "@/lib/tokenStore"
 
 const WORKER_URL = process.env.DROID_WORKER_URL ?? "http://localhost:8787"
 
@@ -51,13 +52,21 @@ export async function POST(req: NextRequest) {
         owner,
         repo,
         webhook_id: webhook.id,
-        installed_by: session.user?.name ?? session.user?.email ?? "unknown",
+        installed_by: session.login ?? "unknown",
       })
       .select()
       .single()
 
     if (error) {
       return NextResponse.json({ error: mapSupabaseError(error) }, { status: 500 })
+    }
+
+    if (session.login && session.accessToken) {
+      try {
+        await upsertUserToken(session.login, session.accessToken)
+      } catch (err) {
+        console.error("Failed to store user token on enroll:", (err as Error).message)
+      }
     }
 
     return NextResponse.json({ ok: true })

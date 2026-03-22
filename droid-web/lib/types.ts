@@ -115,3 +115,10 @@ export interface ChatMessage {
   role: "user" | "assistant"
   content: string
 }
+
+export interface UserToken {
+  github_login: string
+  encrypted_token: string
+  iv: string
+  updated_at: string
+}
