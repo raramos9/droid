@@ -122,3 +122,10 @@ export interface UserToken {
   iv: string
   updated_at: string
 }
+
+export interface UserAnthropicKey {
+  github_login: string
+  encrypted_key: string
+  iv: string
+  updated_at: string
+}
