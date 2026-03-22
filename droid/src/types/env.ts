@@ -8,5 +8,6 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_KEY: string;
   RESUME_API_KEY: string;
+  TOKEN_ENCRYPTION_KEY: string;
   ENVIRONMENT?: string;
 }
