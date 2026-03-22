@@ -6,6 +6,7 @@ import { loadRepoConfig } from "../agent/config";
 import { loadDroidMd } from "../agent/droidMd";
 import { buildSystemPrompt } from "../agent/prompt";
 import { cloneRepo } from "../lib/cloneRepo";
+import { getUserToken } from "../lib/userToken";
 import type { Goal, AgentRun, MessageParam } from "../types/agent";
 import type { Env } from "../types/env";
 
@@ -18,7 +19,10 @@ interface ResumeOpts {
 export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts = {}): Promise<AgentRun> {
   const sandboxId = `droid-${goal.repo.owner}-${goal.repo.name}-${Date.now()}`;
   const sandbox = getSandbox(env.Sandbox as Parameters<typeof getSandbox>[0], sandboxId);
-  const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
+  const resolvedToken =
+    (await getUserToken(goal.repo.owner, goal.repo.name, env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, env.TOKEN_ENCRYPTION_KEY)) ??
+    env.GITHUB_TOKEN;
+  const octokit = new Octokit({ auth: resolvedToken });
 
   let existingRun: AgentRun | undefined;
   if (resumeOpts.existingRunId) {
@@ -35,7 +39,7 @@ export async function runDroidAgent(goal: Goal, env: Env, resumeOpts: ResumeOpts
     // For push events, clone the specific branch that was pushed to
     const ref = goal.type === "push" && typeof goal.context.ref === "string" ? goal.context.ref : "";
     const branch = ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : undefined;
-    await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, env.GITHUB_TOKEN, branch);
+    await cloneRepo(sandbox, goal.repo.owner, goal.repo.name, resolvedToken, branch);
 
     const fallbackConfig = { userConfig: "", repoOverrides: "" };
     const [repoConfig, droidMdContent] = await Promise.all([

@@ -22,6 +22,11 @@ vi.mock("../../src/lib/cloneRepo", () => ({
   cloneRepo: mockCloneRepo,
 }));
 
+const mockGetUserToken = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+vi.mock("../../src/lib/userToken", () => ({
+  getUserToken: mockGetUserToken,
+}));
+
 const mockLoadRepoConfig = vi.hoisted(() => vi.fn().mockResolvedValue({ userConfig: "", repoOverrides: "" }));
 vi.mock("../../src/agent/config", () => ({
   loadRepoConfig: mockLoadRepoConfig,
@@ -44,6 +49,7 @@ const env = {
   SUPABASE_URL: "https://test.supabase.co",
   SUPABASE_SERVICE_KEY: "svc-key",
   RESUME_API_KEY: "resume-secret",
+  TOKEN_ENCRYPTION_KEY: "a".repeat(64),
 };
 
 const pushGoal = {
@@ -194,5 +200,21 @@ describe("runDroidAgent", () => {
     const result = await runDroidAgent(pushGoal, env);
     expect(result.status).toBe("completed");
     expect(mockRunAgent).toHaveBeenCalled();
+  });
+
+  it("uses per-user token for Octokit and cloneRepo when getUserToken returns one", async () => {
+    mockGetUserToken.mockResolvedValueOnce("ghp_per_user_token");
+
+    await runDroidAgent(pushGoal, env);
+
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "ghp_per_user_token", "main");
+  });
+
+  it("falls back to env.GITHUB_TOKEN when getUserToken returns null", async () => {
+    mockGetUserToken.mockResolvedValueOnce(null);
+
+    await runDroidAgent(pushGoal, env);
+
+    expect(mockCloneRepo).toHaveBeenCalledWith(mockSandbox, "acme", "repo", "tok", "main");
   });
 });

@@ -12,6 +12,7 @@ const mockFrom = jest.fn()
 const mockInsert = jest.fn()
 const mockSelect = jest.fn()
 const mockSingle = jest.fn()
+const mockUpsertUserToken = jest.fn()
 
 jest.mock("next-auth", () => ({
   __esModule: true,
@@ -34,6 +35,10 @@ jest.mock("@/lib/supabase", () => ({
   },
 }))
 
+jest.mock("@/lib/tokenStore", () => ({
+  upsertUserToken: (...args: unknown[]) => mockUpsertUserToken(...args),
+}))
+
 const { auth } = require("@/auth")
 
 function makeRequest(body: unknown) {
@@ -50,6 +55,7 @@ beforeEach(() => {
   mockInsert.mockReturnValue({ select: mockSelect })
   mockSelect.mockReturnValue({ single: mockSingle })
   mockSingle.mockResolvedValue({ data: { id: 1 }, error: null })
+  mockUpsertUserToken.mockResolvedValue(undefined)
 })
 
 describe("POST /api/enroll", () => {
@@ -138,5 +144,38 @@ describe("POST /api/enroll", () => {
     const res = await POST(makeRequest({ owner: "testuser", repo: "my-repo" }))
 
     expect(res.status).toBe(500)
+  })
+
+  it("stores installed_by using session.login not display name", async () => {
+    auth.mockResolvedValue({ login: "testuser", user: { name: "Test User" }, accessToken: "tok" })
+    mockGetRepo.mockResolvedValue({ data: { owner: { login: "testuser" }, permissions: { admin: false } } })
+    mockCreateWebhook.mockResolvedValue({ data: { id: 99 } })
+
+    await POST(makeRequest({ owner: "testuser", repo: "my-repo" }))
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ installed_by: "testuser" }),
+    )
+  })
+
+  it("calls upsertUserToken with login and accessToken on successful enroll", async () => {
+    auth.mockResolvedValue({ login: "testuser", accessToken: "ghp_tok" })
+    mockGetRepo.mockResolvedValue({ data: { owner: { login: "testuser" }, permissions: { admin: false } } })
+    mockCreateWebhook.mockResolvedValue({ data: { id: 99 } })
+
+    await POST(makeRequest({ owner: "testuser", repo: "my-repo" }))
+
+    expect(mockUpsertUserToken).toHaveBeenCalledWith("testuser", "ghp_tok")
+  })
+
+  it("still returns 200 when upsertUserToken fails on enroll", async () => {
+    auth.mockResolvedValue({ login: "testuser", accessToken: "tok" })
+    mockGetRepo.mockResolvedValue({ data: { owner: { login: "testuser" }, permissions: { admin: false } } })
+    mockCreateWebhook.mockResolvedValue({ data: { id: 99 } })
+    mockUpsertUserToken.mockRejectedValue(new Error("encryption failed"))
+
+    const res = await POST(makeRequest({ owner: "testuser", repo: "my-repo" }))
+
+    expect(res.status).toBe(200)
   })
 })

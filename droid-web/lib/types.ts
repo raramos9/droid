@@ -20,7 +20,7 @@ export interface AgentRun {
   status: AgentRunStatus
   messages: Message[]
   iteration: number
-  artifacts: Record<string, unknown>[]
+  artifacts: string[]
   error: string | null
   updated_at: string
 }
@@ -114,4 +114,18 @@ export interface PendingActionWithContext extends PendingAction {
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string
+}
+
+export interface UserToken {
+  github_login: string
+  encrypted_token: string
+  iv: string
+  updated_at: string
+}
+
+export interface UserAnthropicKey {
+  github_login: string
+  encrypted_key: string
+  iv: string
+  updated_at: string
 }

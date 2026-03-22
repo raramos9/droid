@@ -41,3 +41,32 @@ describe("RunStatusBadge", () => {
     expect(dot).toBeInTheDocument()
   })
 })
+
+describe("RunStatusBadge iterationLimitReached", () => {
+  it("shows 'limit reached' text when completed and iterationLimitReached is true", () => {
+    render(<RunStatusBadge status="completed" iterationLimitReached />)
+    expect(screen.getByText("limit reached")).toBeInTheDocument()
+  })
+
+  it("shows 'completed' text when completed and iterationLimitReached is false", () => {
+    render(<RunStatusBadge status="completed" iterationLimitReached={false} />)
+    expect(screen.getByText("completed")).toBeInTheDocument()
+  })
+
+  it("shows 'completed' text when completed and iterationLimitReached is omitted", () => {
+    render(<RunStatusBadge status="completed" />)
+    expect(screen.getByText("completed")).toBeInTheDocument()
+  })
+
+  it("ignores iterationLimitReached for non-completed statuses", () => {
+    render(<RunStatusBadge status="failed" iterationLimitReached />)
+    expect(screen.getByText("failed")).toBeInTheDocument()
+    expect(screen.queryByText("limit reached")).not.toBeInTheDocument()
+  })
+
+  it("uses warning color for limit reached badge", () => {
+    const { container } = render(<RunStatusBadge status="completed" iterationLimitReached />)
+    const badge = container.firstChild as HTMLElement
+    expect(badge.style.color).toContain("warning")
+  })
+})

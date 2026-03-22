@@ -43,6 +43,21 @@ export default async function IssueDetailPage({ params }: Props) {
           </p>
         ) : (
           <>
+            {run.artifacts?.includes("iteration_limit_reached") && (
+              <p
+                style={{
+                  fontSize: "0.8rem",
+                  color: "var(--status-warning)",
+                  fontFamily: "var(--font-sans)",
+                  background: "var(--status-warning-bg)",
+                  padding: "8px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  marginBottom: 16,
+                }}
+              >
+                Agent reached the iteration limit and may not have finished its work.
+              </p>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
               <h2
                 style={{
@@ -55,7 +70,10 @@ export default async function IssueDetailPage({ params }: Props) {
               >
                 {run.goal?.context?.title ?? `Issue #${number}`}
               </h2>
-              <RunStatusBadge status={run.status} />
+              <RunStatusBadge
+                status={run.status}
+                iterationLimitReached={run.artifacts?.includes("iteration_limit_reached")}
+              />
             </div>
 
             <IssueDetailContent run={run} owner={owner} repo={repo} issueNumber={issueNumber} />

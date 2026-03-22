@@ -16,14 +16,19 @@ const DOT_CONFIG: Record<AgentRunStatus, DotConfig> = {
 
 interface Props {
   status: AgentRunStatus
+  iterationLimitReached?: boolean
 }
 
-export function RunStatusBadge({ status }: Props) {
-  const { color, bg, animation } = DOT_CONFIG[status]
+export function RunStatusBadge({ status, iterationLimitReached }: Props) {
+  const isLimitReached = status === "completed" && iterationLimitReached
+  const effectiveConfig = isLimitReached
+    ? { color: "var(--status-warning)", bg: "var(--status-warning-bg)" }
+    : DOT_CONFIG[status]
+  const { color, bg, animation } = effectiveConfig
 
   return (
     <span
-      className={`badge font-mono status-${status}`}
+      className={`badge font-mono status-${isLimitReached ? "limit-reached" : status}`}
       style={{ background: bg, color }}
     >
       <span
@@ -38,7 +43,7 @@ export function RunStatusBadge({ status }: Props) {
           animation,
         }}
       />
-      {status}
+      {isLimitReached ? "limit reached" : status}
     </span>
   )
 }
